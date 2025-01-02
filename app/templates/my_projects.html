@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="projects-container">
+    <div class="projects-header">
+        <h2>My Projects</h2>
+        <a href="{{ url_for('main.create_project') }}" class="create-btn">+ New Project</a>
+    </div>
+
+    <div class="projects-grid">
+        {% for project in projects %}
+        <div class="project-card" onclick="goToProject('{{ project.id }}', event)">
+            <div class="project-header">
+                <h3>{{ project.title }}</h3>
+                <div class="project-actions">
+                    <a href="{{ url_for('main.edit_project', project_id=project.id) }}" class="edit-btn" onclick="event.stopPropagation()">
+                        Edit
+                    </a>
+                </div>
+            </div>
+            
+            <div class="project-body">
+                <p class="project-description">{{ project.description[:200] }}...</p>
+                
+                <div class="funding-progress">
+                    <div class="progress-stats">
+                        <span class="raised">{{ project.funds_raised|default(0, true) }} ETH</span>
+                        <span class="goal">{{ project.goal_amount }} ETH</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int }}%"></div>
+                    </div>
+                    <div class="progress-percentage">
+                        {{ ((project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int) }}% funded
+                    </div>
+                </div>
+
+                <div class="project-meta">
+                    <div class="meta-item">
+                        <span class="label">Goal:</span>
+                        <span class="value">{{ project.goal_amount }} ETH</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Team:</span>
+                        <span class="value">{{ project.team_members|length }} members</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Documents:</span>
+                        <span class="value">{{ project.documents|length }} files</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="project-footer">
+                <span class="project-date">Created: {{ moment(project.created_at).fromNow() }}</span>
+                <span class="project-status {{ project.status }}">{{ project.status|title }}</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-projects">
+            <p>You haven't created any projects yet.</p>
+            <a href="{{ url_for('main.create_project') }}" class="create-btn">Create Your First Project</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function goToProject(projectId, event) {
+    // Don't navigate if clicking on buttons or links
+    if (event.target.closest('.edit-btn')) {
+        return;
+    }
+    window.location.href = `/view-project/${projectId}`;
+}
+</script>
+{% endblock %} 

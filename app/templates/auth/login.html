@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <h2>InnoFund</h2>
+        <p class="auth-subtitle">Sign in to continue</p>
+    </div>
+
+    <div class="oauth-buttons">
+        <button class="oauth-btn google" onclick="window.location.href='{{ url_for('auth.google_login', next=next) }}'">
+            <img src="{{ url_for('static', filename='images/google.svg') }}" alt="Google">
+            <span>Continue with Google</span>
+        </button>
+        
+        <button class="oauth-btn github" onclick="signInWithGithub('{{ next }}')">
+            <img src="{{ url_for('static', filename='images/github.svg') }}" alt="GitHub">
+            <span>Continue with GitHub</span>
+        </button>
+    </div>
+
+    <div class="auth-separator">
+        <span>or</span>
+    </div>
+    
+    <form method="POST" class="auth-form">
+        <div class="form-group">
+            <input type="email" name="email" class="form-control" placeholder="Email" required>
+        </div>
+        <div class="form-group">
+            <input type="password" name="password" class="form-control" placeholder="Password" required>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="auth-btn">Sign In</button>
+    </form>
+    
+    <p class="auth-footer">
+        Don't have an account? <a href="{{ url_for('auth.register') }}">Create Account</a>
+    </p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script>
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyAgaFsaXSdgxFrdrCJYoQQim-uXRs0B3-w",
+    authDomain: "defy-kgp.firebaseapp.com",
+    projectId: "defy-kgp",
+    storageBucket: "defy-kgp.firebasestorage.app",
+    messagingSenderId: "946707584679",
+    appId: "1:946707584679:web:aa5227f0944c4e85c06d82",
+    measurementId: "G-JEHMQ6WRP7"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+</script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %} 

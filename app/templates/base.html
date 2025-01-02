@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {{ moment.include_moment() }}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <a href="{{ url_for('main.dashboard') }}">InnoFund</a>
+        </div>
+        <div class="nav-links">
+            {% if current_user.is_authenticated %}
+                <button class="nav-btn wallet {% if current_user.wallet_address %}connected{% endif %}" 
+                        onclick="{% if current_user.wallet_address %}showWalletInfo(){% else %}window.location.href='{{ url_for('main.connect_wallet') }}'{% endif %}">
+                    {% if current_user.wallet_address %}
+                        {{ current_user.wallet_address[:6] }}...{{ current_user.wallet_address[-4:] }}
+                    {% else %}
+                        Connect Wallet
+                    {% endif %}
+                </button>
+            {% endif %}
+            <div class="nav-dropdown">
+                <a href="#" class="nav-btn">Projects</a>
+                <div class="dropdown-content">
+                    <a href="{{ url_for('main.create_project') }}" class="dropdown-item">Create Project</a>
+                    <a href="{{ url_for('main.my_projects') }}" class="dropdown-item">My Projects</a>
+                    <a href="#" class="dropdown-item">Browse Projects</a>
+                </div>
+            </div>
+            <div class="profile-nav">
+                <div class="profile-dropdown">
+                    {% if current_user.photo_url %}
+                        <img src="{{ current_user.photo_url }}" alt="Profile" class="nav-profile-photo">
+                    {% else %}
+                        <div class="nav-profile-placeholder">
+                            {{ current_user.display_name[0] }}
+                        </div>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        <a href="{{ url_for('main.dashboard') }}" class="dropdown-item">Dashboard</a>
+                        <a href="{{ url_for('main.profile') }}" class="dropdown-item">My Profile</a>
+                        <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}" role="alert">
+                    {{ message }}
+                    <button type="button" class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    </div>
+    
+    {% block content %}{% endblock %}
+
+    <script>
+    // Auto-dismiss flash messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function(message) {
+                message.style.opacity = '0';
+                setTimeout(function() {
+                    message.remove();
+                }, 300);
+            });
+        }, 5000);
+    });
+
+    function showWalletInfo() {
+        // Add wallet info display logic here
+        alert('Wallet connected: ' + '{{ current_user.wallet_address if current_user.is_authenticated and current_user.wallet_address else "" }}');
+    }
+    </script>
+    
+    <!-- Additional scripts block for templates -->
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

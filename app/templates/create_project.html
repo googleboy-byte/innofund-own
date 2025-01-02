@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="create-project-container">
+    <form method="POST" class="project-form" enctype="multipart/form-data">
+        <div class="form-columns">
+            <!-- Left Column - Project Details -->
+            <div class="form-column left-column">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="4" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Team Members</label>
+                    <div id="team-members-container">
+                        <!-- Creator's profile (non-removable) -->
+                        <div class="team-member-input creator">
+                            <div class="member-avatar">
+                                {% if current_user.photo_url %}
+                                    <img src="{{ current_user.photo_url }}" alt="{{ current_user.display_name }}">
+                                {% else %}
+                                    <div class="avatar-placeholder">{{ current_user.display_name[0]|upper }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="member-details">
+                                <div class="member-role">Creator</div>
+                                <div class="member-name">{{ current_user.display_name }}</div>
+                            </div>
+                            <input type="hidden" 
+                                   name="team_members[]" 
+                                   value="{{ url_for('main.public_profile', user_id=current_user.id, _external=True) }}">
+                        </div>
+                    </div>
+                    <button type="button" class="add-member-btn" onclick="addTeamMember()">
+                        <i class="fas fa-plus-circle"></i>
+                        Add Team Member
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Citations</label>
+                    <textarea name="citations" class="form-control" rows="2" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Goal Amount (ETH)</label>
+                    <input type="number" name="goal_amount" class="form-control" step="0.01" required>
+                </div>
+            </div>
+
+            <!-- Right Column - File Upload and Submit -->
+            <div class="form-column right-column">
+                <div class="form-group file-upload-section">
+                    <label class="form-label">Project Documents</label>
+                    <div class="file-upload-container">
+                        <input type="file" name="documents[]" id="file-upload" accept=".pdf" multiple class="file-input">
+                        <label for="file-upload" class="file-upload-label">
+                            <span>Attach PDFs</span>
+                        </label>
+                        <div id="file-list" class="file-list"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">Submit Project</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.team-member-input {
+    @apply flex items-center gap-3 mb-2 bg-dark-bg/50 rounded-lg p-3;
+}
+
+.member-avatar {
+    @apply w-10 h-10 rounded-full overflow-hidden flex items-center justify-center 
+           bg-dark-bg text-text-primary text-sm font-medium flex-shrink-0;
+}
+
+.member-avatar img {
+    @apply w-full h-full object-cover;
+}
+
+.avatar-placeholder {
+    @apply w-full h-full flex items-center justify-center bg-dark-bg;
+}
+
+.member-details {
+    @apply flex-1;
+}
+
+.member-role {
+    @apply text-neon-green text-xs font-medium;
+}
+
+.member-name {
+    @apply text-text-primary text-sm;
+}
+
+.member-input {
+    @apply flex-1 relative;
+}
+
+.member-input input {
+    @apply pr-8;  /* Space for the loading/check icon */
+}
+
+.member-input i {
+    @apply absolute right-2 top-1/2 transform -translate-y-1/2;
+}
+
+.member-input i.loading {
+    @apply text-text-secondary animate-spin;
+}
+
+.member-input i.valid {
+    @apply text-neon-green;
+}
+
+.member-input i.invalid {
+    @apply text-red-500;
+}
+
+.add-member-btn {
+    @apply flex items-center gap-2 text-text-secondary hover:text-neon-green mt-2
+           transition-colors text-sm font-medium;
+}
+
+.add-member-btn i {
+    @apply text-lg;
+}
+
+.remove-member {
+    @apply text-text-secondary hover:text-red-500 text-xl font-medium transition-colors ml-2;
+}
+</style>
+
+<script>
+let debounceTimer;
+
+function addTeamMember() {
+    const container = document.getElementById('team-members-container');
+    const newMember = document.createElement('div');
+    newMember.className = 'team-member-input';
+    newMember.innerHTML = `
+        <div class="member-avatar">
+            <div class="avatar-placeholder">?</div>
+        </div>
+        <div class="member-input">
+            <input type="text" 
+                   class="form-control" 
+                   placeholder="Enter member's profile link"
+                   oninput="validateProfileLink(this)">
+            <i class="fas fa-circle-notch loading" style="display: none;"></i>
+        </div>
+        <button type="button" class="remove-member" onclick="removeMember(this)">×</button>
+        <input type="hidden" name="team_members[]" value="">
+    `;
+    container.appendChild(newMember);
+}
+
+async function validateProfileLink(input) {
+    const memberInput = input.closest('.member-input');
+    const hiddenInput = input.closest('.team-member-input').querySelector('input[type="hidden"]');
+    const loadingIcon = memberInput.querySelector('.loading');
+    const avatar = input.closest('.team-member-input').querySelector('.member-avatar');
+    
+    // Clear any existing status
+    memberInput.querySelector('i')?.remove();
+    
+    if (!input.value) {
+        hiddenInput.value = '';
+        return;
+    }
+    
+    // Show loading icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-circle-notch loading';
+    memberInput.appendChild(icon);
+    
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+        try {
+            // Extract user ID from profile link
+            const userId = input.value.split('/').pop();
+            
+            // Fetch user profile data
+            const response = await fetch(`/api/user/${userId}`);
+            const userData = await response.json();
+            
+            if (userData.success) {
+                // Update hidden input with validated profile link
+                hiddenInput.value = input.value;
+                
+                // Update avatar and name
+                avatar.innerHTML = userData.photo_url 
+                    ? `<img src="${userData.photo_url}" alt="${userData.display_name}">`
+                    : `<div class="avatar-placeholder">${userData.display_name[0].toUpperCase()}</div>`;
+                
+                // Show success icon
+                icon.className = 'fas fa-check valid';
+            } else {
+                hiddenInput.value = '';
+                icon.className = 'fas fa-times invalid';
+            }
+        } catch (error) {
+            console.error('Profile validation error:', error);
+            hiddenInput.value = '';
+            icon.className = 'fas fa-times invalid';
+        }
+    }, 500);
+}
+
+function removeMember(button) {
+    const memberInput = button.closest('.team-member-input');
+    if (!memberInput.classList.contains('creator')) {
+        memberInput.remove();
+    }
+}
+
+// Store selected files
+let selectedFiles = new DataTransfer();
+
+// File upload handling
+document.getElementById('file-upload').addEventListener('change', function(e) {
+    const fileList = document.getElementById('file-list');
+    
+    // Add new files to our DataTransfer object
+    for(let file of this.files) {
+        selectedFiles.items.add(file);
+    }
+    
+    // Update the input's files
+    this.files = selectedFiles.files;
+    
+    // Update the display
+    updateFileList();
+});
+
+function updateFileList() {
+    const fileList = document.getElementById('file-list');
+    fileList.innerHTML = '';
+    
+    for(let i = 0; i < selectedFiles.files.length; i++) {
+        const file = selectedFiles.files[i];
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <span>${file.name}</span>
+            <button type="button" class="remove-file" data-index="${i}">×</button>
+        `;
+        fileList.appendChild(fileItem);
+    }
+}
+
+// Event delegation for remove buttons
+document.getElementById('file-list').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-file')) {
+        const index = parseInt(e.target.dataset.index);
+        const newFiles = new DataTransfer();
+        
+        // Copy all files except the removed one
+        for(let i = 0; i < selectedFiles.files.length; i++) {
+            if (i !== index) {
+                newFiles.items.add(selectedFiles.files[i]);
+            }
+        }
+        
+        // Update our stored files
+        selectedFiles = newFiles;
+        
+        // Update the input's files
+        document.getElementById('file-upload').files = selectedFiles.files;
+        
+        // Update the display
+        updateFileList();
+    }
+});
+
+// Add file validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const files = selectedFiles.files;
+    if (files.length > 5) {  // Maximum 5 files
+        e.preventDefault();
+        alert('Maximum 5 files allowed');
+        return;
+    }
+    
+    let totalSize = 0;
+    for (let file of files) {
+        totalSize += file.size;
+        if (file.size > 10 * 1024 * 1024) {  // 10MB per file
+            e.preventDefault();
+            alert('Each file must be less than 10MB');
+            return;
+        }
+    }
+    
+    if (totalSize > 50 * 1024 * 1024) {  // 50MB total
+        e.preventDefault();
+        alert('Total file size must be less than 50MB');
+        return;
+    }
+});
+</script>
+{% endblock %} 

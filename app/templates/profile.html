@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="user-profile">
+        {% if user.photo_url %}
+            <img src="{{ user.photo_url }}" alt="Profile Photo" class="profile-photo">
+        {% endif %}
+        <h3>{{ user.display_name }}</h3>
+        
+        <div class="user-meta">
+            <span class="join-date">Member since {{ moment(user.created_at).format('MMMM YYYY') }}</span>
+            {% if user.wallet_address %}
+            <div class="wallet-info">
+                <span class="label">Wallet:</span>
+                <span class="wallet-address">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
+                {% if is_owner %}
+                <button onclick="copyWalletAddress('{{ user.wallet_address }}')" class="copy-btn">
+                    <i class="fas fa-copy"></i>
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="profile-share">
+            <button class="share-btn" onclick="copyProfileLink()">
+                Share Profile
+            </button>
+        </div>
+    </div>
+
+    {% if is_owner %}
+    <button class="auth-btn" onclick="window.location.href='{{ url_for('auth.logout') }}'">
+        Logout
+    </button>
+    {% endif %}
+</div>
+
+<div class="profile-actions">
+    {% if is_owner %}
+        <button class="edit-profile-btn">
+            <i class="fas fa-edit"></i> Edit Profile
+        </button>
+    {% endif %}
+    <button class="share-profile-btn" onclick="copyProfileLink()">
+        <i class="fas fa-share-alt"></i> Share Profile
+    </button>
+</div>
+
+<script>
+function copyProfileLink() {
+    const url = "{{ profile_url }}";
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = document.querySelector('.share-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    });
+}
+
+function copyWalletAddress(address) {
+    navigator.clipboard.writeText(address).then(() => {
+        showToast('Wallet address copied to clipboard!');
+    });
+}
+</script>
+
+<style>
+.user-meta {
+    @apply flex flex-col items-center gap-2 mt-2 text-sm text-text-secondary;
+}
+
+.join-date {
+    @apply text-center;
+}
+
+.wallet-info {
+    @apply flex items-center gap-2;
+}
+
+.wallet-address {
+    @apply font-mono bg-dark-bg px-2 py-1 rounded;
+}
+
+.copy-btn {
+    @apply text-text-secondary hover:text-neon-green transition-colors;
+}
+</style>
+{% endblock %} 

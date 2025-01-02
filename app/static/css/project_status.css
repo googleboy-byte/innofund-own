@@ -1,0 +1,58 @@
+/* Project Status Styles */
+.header-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.header-top h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+.status-section {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0;
+    margin: 0.5rem 0;
+    border-top: 1px solid #333;
+}
+
+.project-status {
+    display: inline-block;
+    padding: 0.25rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.project-status.active {
+    background: rgba(0, 255, 157, 0.1);
+    color: var(--neon-green);
+}
+
+.project-status.inactive {
+    background: rgba(255, 51, 102, 0.1);
+    color: #ff3366;
+    text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+}
+
+.project-status.completed {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+/* Remove old status styles */
+.status-indicator, 
+.status-pill, 
+.status-dot, 
+.title-status-wrapper,
+.status-text, 
+.status-badge, 
+.status-text > span {
+    display: none;
+} 

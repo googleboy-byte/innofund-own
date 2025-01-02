@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="oauth-buttons">
+        <button class="oauth-btn google" onclick="window.location.href='{{ url_for('auth.google_login') }}'">
+            <img src="{{ url_for('static', filename='images/google.svg') }}" alt="Google">
+            <span>Sign up with Google</span>
+        </button>
+        
+        <button class="oauth-btn github" onclick="signInWithGithub()">
+            <img src="{{ url_for('static', filename='images/github.svg') }}" alt="GitHub">
+            <span>Sign up with GitHub</span>
+        </button>
+    </div>
+
+    <div class="auth-separator">
+        <span>or</span>
+    </div>
+    
+    <form method="POST" class="auth-form">
+        <div class="form-group">
+            <input type="text" name="name" class="form-control" placeholder="Full Name" required>
+        </div>
+        <div class="form-group">
+            <input type="email" name="email" class="form-control" placeholder="Email" required>
+        </div>
+        <div class="form-group">
+            <input type="password" name="password" class="form-control" placeholder="Password" required>
+        </div>
+        <button type="submit" class="auth-btn">Create Account</button>
+    </form>
+    
+    <p class="auth-footer">
+        Already have an account? <a href="{{ url_for('auth.login') }}">Sign In</a>
+    </p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyAgaFsaXSdgxFrdrCJYoQQim-uXRs0B3-w",
+    authDomain: "defy-kgp.firebaseapp.com",
+    projectId: "defy-kgp",
+    storageBucket: "defy-kgp.firebasestorage.app",
+    messagingSenderId: "946707584679",
+    appId: "1:946707584679:web:aa5227f0944c4e85c06d82",
+    measurementId: "G-JEHMQ6WRP7"
+};
+
+firebase.initializeApp(firebaseConfig);
+</script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %} 

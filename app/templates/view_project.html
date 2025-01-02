@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="project-view-container {% if project.status == 'inactive' %}deactivated-theme{% endif %}">
+    <div class="project-header-section">
+        <div class="project-main-info">
+            <h1>{{ project.title }}</h1>
+            <div class="project-creator">
+                <div class="creator-avatar">
+                    {% if creator and creator.photo_url %}
+                        <img src="{{ creator.photo_url }}" alt="{{ creator.display_name }}">
+                    {% else %}
+                        <span>{{ project.creator_name[0]|upper }}</span>
+                    {% endif %}
+                </div>
+                <div class="creator-info">
+                    <a href="{{ url_for('main.public_profile', user_id=project.created_by) }}" class="creator-name">
+                        {{ project.creator_name }}
+                    </a>
+                    <span class="creation-date">Created {{ moment(project.created_at).fromNow() }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="project-actions">
+            <div class="action-buttons">
+                {% if is_owner %}
+                    <a href="{{ url_for('main.edit_project', project_id=project.id) }}" class="edit-btn">
+                        <i class="fas fa-edit"></i> Edit Project
+                    </a>
+                    {% if project.status == 'active' %}
+                    <button type="button" class="deactivate-btn" onclick="deactivateProject('{{ project.id }}')">
+                        <i class="fas fa-power-off"></i> Deactivate Project
+                    </button>
+                    {% endif %}
+                {% else %}
+                    {% if project.status == 'active' %}
+                    <button type="button" class="donate-btn" onclick="showDonateModal()">
+                        <i class="fas fa-hand-holding-usd"></i> Donate Now
+                    </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+            
+            <div class="share-buttons">
+                <button onclick="shareProject('twitter')" class="share-btn twitter">
+                    <i class="fab fa-twitter"></i>
+                </button>
+                <button onclick="shareProject('linkedin')" class="share-btn linkedin">
+                    <i class="fab fa-linkedin"></i>
+                </button>
+                <button onclick="copyProjectLink()" class="share-btn copy">
+                    <i class="fas fa-link"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="project-content">
+        <div class="project-main">
+            <div class="funding-status">
+                <div class="funding-progress">
+                    <div class="progress-stats">
+                        <span class="raised">{{ project.funds_raised|default(0, true) }} ETH</span>
+                        <span class="goal">{{ project.goal_amount }} ETH</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int }}%"></div>
+                    </div>
+                    <div class="progress-percentage">
+                        {{ ((project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int) }}% funded
+                    </div>
+                </div>
+                
+                <div class="funding-meta">
+                    <div class="meta-item">
+                        <span class="label">Status</span>
+                        <span class="value status-{{ project.status }}">{{ project.status|title }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Team Members</span>
+                        <span class="value">{{ project.team_members|length }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="project-description">
+                <h2>About the Project</h2>
+                <div class="description-content">
+                    {{ project.description }}
+                </div>
+            </div>
+
+            {% if project.citations %}
+            <div class="project-citations">
+                <h2>Citations & References</h2>
+                <div class="citations-content">
+                    {{ project.citations|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if project.documents %}
+            <div class="project-documents">
+                <h2>Project Documents</h2>
+                <div class="documents-grid">
+                    {% for doc in project.documents %}
+                    <a href="{{ doc.url }}" target="_blank" class="document-item">
+                        <span class="doc-name">{{ doc.name }}</span>
+                        <span class="doc-action">View →</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="project-sidebar">
+            <div class="team-section">
+                <h3>Project Team</h3>
+                <div class="team-list">
+                    {% for member in project.team_members %}
+                    <div class="team-member" data-member-id="{{ member.id }}">
+                        <div class="member-avatar">
+                            {% if member.photo_url %}
+                                <img src="{{ member.photo_url }}" alt="{{ member.name }}">
+                            {% else %}
+                                <span>{{ member.name[0]|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="member-info">
+                            <div class="member-name">{{ member.name }}</div>
+                            <div class="member-title">{{ member.title }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if project.transactions %}
+            <div class="transactions-section">
+                <h3>Recent Contributions</h3>
+                <div class="transactions-list">
+                    {% for tx in project.transactions[-5:] %}
+                    <div class="transaction-item">
+                        <div class="tx-info">
+                            <span class="tx-amount">{{ tx.amount }} ETH</span>
+                            <span class="tx-from">from {{ tx.contributor_name }}</span>
+                        </div>
+                        <span class="tx-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Donate Modal -->
+<div id="donateModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Support this Project</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group mb-4">
+                <label for="donationAmount" class="block text-text-secondary mb-2">Amount (ETH)</label>
+                <input type="number" 
+                       id="donationAmount" 
+                       class="form-control w-1/2"
+                       step="0.01" 
+                       min="0.01" 
+                       placeholder="0.00"
+                       required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" onclick="handleDonation()" class="donate-btn">
+                <i class="fas fa-hand-holding-usd mr-2"></i>Donate
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Confirmation Modal -->
+<div id="deactivateModal" class="modal deactivate-modal">
+    <div class="modal-content deactivate-content">
+        <h2>Deactivate Project</h2>
+        <p>Are you sure you want to deactivate this project? Once deactivated, it cannot receive further donations.</p>
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeDeactivateModal()">Cancel</button>
+            <button class="confirm-deactivate-btn" onclick="confirmDeactivate('{{ project.id }}')">
+                <i class="fas fa-power-off"></i> Deactivate
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal Styles */
+.modal-content {
+    @apply bg-dark-secondary rounded-xl shadow-xl w-full max-w-md mx-auto;
+}
+
+.modal-header {
+    @apply p-6 border-b border-[#333] relative;
+}
+
+.modal-header h2 {
+    @apply text-xl font-semibold text-text-primary m-0;
+}
+
+.modal-body {
+    @apply p-6;
+}
+
+.modal-footer {
+    @apply p-6 border-t border-[#333] flex justify-end;
+}
+
+.form-control {
+    @apply w-full px-4 py-3 bg-dark-bg border border-[#333] rounded-lg text-text-primary 
+           text-sm transition-all focus:border-neon-green focus:outline-none focus:ring-1 focus:ring-neon-green;
+}
+
+.primary-btn {
+    @apply px-6 py-2 bg-neon-green text-dark-bg rounded-lg font-medium 
+           transition-all hover:bg-dark-green hover:transform hover:-translate-y-0.5
+           disabled:opacity-50 disabled:cursor-not-allowed flex items-center;
+}
+
+.close {
+    @apply absolute top-6 right-6 text-text-secondary text-xl cursor-pointer 
+           hover:text-text-primary transition-colors;
+}
+
+/* Toast Notifications */
+.toast {
+    @apply fixed bottom-4 right-4 bg-dark-secondary rounded-lg shadow-lg
+           transform translate-y-full opacity-0 transition-all duration-300
+           border border-[#333] max-w-md z-50;
+}
+
+.toast.show {
+    @apply translate-y-0 opacity-100;
+}
+
+.toast.success {
+    @apply border-neon-green;
+}
+
+.toast.error {
+    @apply border-red-500;
+}
+
+.toast-content {
+    @apply flex items-center gap-3 p-4;
+}
+
+.toast-content i {
+    @apply text-xl;
+}
+
+.toast.success i {
+    @apply text-neon-green;
+}
+
+.toast.error i {
+    @apply text-red-500;
+}
+
+.toast-content span {
+    @apply text-text-primary text-sm;
+}
+
+.toast-close {
+    @apply absolute top-2 right-2 text-text-secondary hover:text-text-primary
+           transition-colors text-lg leading-none;
+}
+
+/* Button Styles */
+.action-buttons {
+    @apply flex items-center gap-4;
+}
+
+.edit-btn {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-dark-bg text-neon-green rounded-lg font-semibold 
+           border border-neon-green/30 transition-all duration-300 hover:bg-neon-green/10 
+           hover:border-neon-green hover:text-neon-green hover:shadow-[0_0_15px_rgba(0,255,157,0.15)]
+           hover:scale-105 active:scale-100;
+}
+
+.edit-btn i {
+    @apply text-lg;
+}
+
+.deactivate-btn {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-dark-bg text-red-400 rounded-lg font-semibold 
+           border border-red-500/30 transition-all duration-300 hover:bg-red-500/10 
+           hover:border-red-500 hover:text-red-300 hover:shadow-[0_0_15px_rgba(239,68,68,0.15)]
+           hover:scale-105 active:scale-100;
+}
+
+.deactivate-btn i {
+    @apply text-lg;
+}
+
+.donate-btn {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-neon-green text-dark-bg rounded-lg font-semibold
+           transition-all duration-300 hover:bg-dark-green hover:shadow-[0_0_15px_rgba(0,255,157,0.5)]
+           hover:scale-105 active:scale-100;
+}
+
+.donate-btn i {
+    @apply text-lg;
+}
+
+/* Share Buttons */
+.share-buttons {
+    @apply flex items-center gap-2;
+}
+
+.share-btn {
+    @apply p-2 text-text-secondary hover:text-text-primary transition-colors;
+}
+
+/* Deactivate Modal Styles */
+.deactivate-modal .modal-content {
+    max-width: 400px;
+    background: var(--dark-secondary);
+    padding: 2rem;
+    border: 1px solid rgba(255, 0, 60, 0.2);
+    box-shadow: 0 0 20px rgba(255, 0, 60, 0.1);
+}
+
+.deactivate-modal h2 {
+    color: #ff003c;
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+}
+
+.deactivate-modal p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.cancel-btn {
+    padding: 0.6rem 1.2rem;
+    background: transparent;
+    border: 1px solid #333;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.confirm-deactivate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background-color: rgba(255, 0, 60, 0.1);
+    color: #ff003c;
+    border: 1px solid rgba(255, 0, 60, 0.2);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+}
+
+.confirm-deactivate-btn:hover {
+    background-color: rgba(255, 0, 60, 0.15);
+    border-color: rgba(255, 0, 60, 0.3);
+    box-shadow: 0 0 12px rgba(255, 0, 60, 0.2);
+    transform: translateY(-1px);
+}
+
+.confirm-deactivate-btn i {
+    font-size: 0.9rem;
+}
+
+/* Deactivated Theme Styles */
+.deactivated-theme {
+    /* Keep original green for header section */
+}
+
+/* Apply red theme only to content section for deactivated projects */
+.deactivated-theme .project-content {
+    /* Replace green with red only in content section */
+    --neon-green: #ff3366;
+    --dark-green: #cc2952;
+}
+
+/* Ensure deactivated projects always show red progress bars */
+.deactivated-theme .progress-fill {
+    background: #ff3366 !important;  /* Solid red, no gradient */
+    box-shadow: none !important;  /* Remove any glow effects */
+}
+
+/* Base progress bar styles */
+.progress-bar {
+    @apply w-full h-2 bg-dark-bg rounded-full overflow-hidden border border-[#333];
+}
+
+.progress-fill {
+    @apply h-full transition-all duration-300;
+    background-color: var(--neon-green);  /* Default green for active projects */
+}
+</style>
+
+<script>
+function showDonateModal() {
+    {% if project.status != 'active' %}
+        showToast('This project is no longer accepting donations', 'error');
+        return;
+    {% endif %}
+    {% if project.created_by == current_user.id %}
+        showToast('You cannot donate to your own project', 'error');
+        return;
+    {% endif %}
+    const modal = document.getElementById('donateModal');
+    const amountInput = document.getElementById('donationAmount');
+    amountInput.value = '';  // Reset the input
+    modal.style.display = 'block';
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="toast-close">&times;</button>
+    `;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+async function handleDonation() {
+    try {
+        const amount = parseFloat(document.getElementById('donationAmount').value);
+        
+        if (amount <= 0 || isNaN(amount)) {
+            showToast('Please enter a valid amount', 'error');
+            return;
+        }
+
+        // Get current funds and goal amount
+        const currentFunds = parseFloat('{{ project.funds_raised|default(0, true) }}');
+        const goalAmount = parseFloat('{{ project.goal_amount }}');
+        const remainingAmount = goalAmount - currentFunds;
+
+        // Check if donation would exceed goal
+        if (amount > remainingAmount) {
+            showToast(`Donation amount exceeds remaining goal. Maximum allowed: ${remainingAmount.toFixed(2)} ETH`, 'error');
+            return;
+        }
+        
+        const formData = { amount };
+        console.log('Sending request:', formData);
+        
+        const response = await fetch(`/update-project-funds/{{ project.id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('donateModal').style.display = 'none';
+            showToast('Donation successful! Thank you for your support.', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            throw new Error(result.error || 'Donation failed');
+        }
+    } catch (error) {
+        console.error('Donation error:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('donateModal');
+    const deactivateModal = document.getElementById('deactivateModal');
+    if (event.target === modal) {
+        modal.style.display = 'none';
+    }
+    if (event.target === deactivateModal) {
+        deactivateModal.style.display = 'none';
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.getElementById('donateModal').style.display = 'none';
+        document.getElementById('deactivateModal').style.display = 'none';
+    }
+});
+
+// Add click handler for close button
+document.querySelector('.close').addEventListener('click', function() {
+    document.getElementById('donateModal').style.display = 'none';
+});
+
+function shareProject(platform) {
+    const projectUrl = window.location.href;
+    const projectTitle = "{{ project.title }}";
+    const projectDesc = "{{ project.description[:100] }}...";
+    
+    let shareUrl;
+    
+    switch(platform) {
+        case 'twitter':
+            shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(projectTitle)}&url=${encodeURIComponent(projectUrl)}`;
+            break;
+        case 'linkedin':
+            shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(projectUrl)}`;
+            break;
+    }
+    
+    if (shareUrl) {
+        window.open(shareUrl, '_blank', 'width=600,height=400');
+    }
+}
+
+function copyProjectLink() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('Link copied to clipboard!');
+    });
+}
+
+function goToProfile(userId) {
+    if (userId) {
+        window.location.href = `/profile/${userId}`;
+    }
+}
+
+// Enable keyboard navigation for team members
+document.querySelectorAll('.team-member[role="button"]').forEach(member => {
+    member.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            member.click();
+        }
+    });
+});
+
+document.querySelectorAll('.team-member').forEach(member => {
+    member.addEventListener('click', () => {
+        const memberId = member.dataset.memberId;
+        if (memberId) {
+            window.location.href = `/profile/${memberId}`;
+        }
+    });
+});
+
+function copyWalletAddress(address) {
+    navigator.clipboard.writeText(address).then(() => {
+        showToast('Wallet address copied to clipboard!');
+    });
+}
+
+function deactivateProject(projectId) {
+    const modal = document.getElementById('deactivateModal');
+    modal.style.display = 'block';
+}
+
+function closeDeactivateModal() {
+    const modal = document.getElementById('deactivateModal');
+    modal.style.display = 'none';
+}
+
+async function confirmDeactivate(projectId) {
+    try {
+        const response = await fetch(`/deactivate-project/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Project deactivated successfully', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            throw new Error(result.error || 'Failed to deactivate project');
+        }
+    } catch (error) {
+        console.error('Deactivation error:', error);
+        showToast(error.message, 'error');
+    } finally {
+        closeDeactivateModal();
+    }
+}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/project.js') }}"></script>
+{% endblock %} 

@@ -1,0 +1,694 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/project_status.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search projects...">
+            <button class="filter-btn" onclick="toggleFilters()">
+                <i class="fas fa-filter"></i>
+            </button>
+        </div>
+        
+        <div class="search-filters" id="filters-panel" style="display: none;">
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="status-filter">
+                    <option value="">All</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Goal Amount</label>
+                <div class="goal-inputs">
+                    <input type="number" id="min-goal" placeholder="Min ETH">
+                    <input type="number" id="max-goal" placeholder="Max ETH">
+                </div>
+            </div>
+            
+            <div class="filter-group">
+                <label>Sort By</label>
+                <select id="sort-by">
+                    <option value="recent">Most Recent</option>
+                    <option value="goal">Highest Goal</option>
+                    <option value="progress">Most Progress</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Feed -->
+    <div class="projects-feed" id="projects-container">
+        {% for project in projects %}
+        <div class="project-card {% if project.status == 'inactive' %}deactivated-theme{% endif %}" 
+             onclick="goToProject('{{ project.id }}', event)"
+             data-project-id="{{ project.id }}"
+             data-funds-raised="{{ project.funds_raised|default(0, true) }}"
+             data-goal-amount="{{ project.goal_amount }}"
+             data-creator-id="{{ project.created_by }}">
+            <div class="project-header">
+                <div class="header-top">
+                    <h3>{{ project.title }}</h3>
+                </div>
+                {% if project.created_by != current_user.id and project.status == 'active' %}
+                <button class="donate-btn" onclick="showDonateModal('{{ project.id }}', '{{ project.title }}')">
+                    Donate
+                </button>
+                {% endif %}
+            </div>
+            
+            <div class="project-body">
+                <p class="project-description">{{ project.description[:200] }}...</p>
+                
+                <div class="funding-progress">
+                    <div class="progress-stats">
+                        <span class="raised">{{ project.funds_raised|default(0, true) }} ETH</span>
+                        <span class="goal">of {{ project.goal_amount }} ETH goal</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int }}%"></div>
+                    </div>
+                    <div class="progress-percentage">
+                        {{ ((project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int) }}% funded
+                    </div>
+                </div>
+
+                <div class="status-section">
+                    <span class="project-status {{ project.status }}">{{ project.status|title }}</span>
+                </div>
+
+                <div class="creator-info">
+                    <div class="creator-avatar">{{ project.creator_name[0]|upper }}</div>
+                    <div class="creator-details">
+                        <span class="creator-name">{{ project.creator_name }}</span>
+                        <span class="creation-date">Created {{ moment(project.created_at).fromNow() }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Donate Modal -->
+    <div id="donate-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Support this Project</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-4">
+                    <label for="donationAmount" class="block text-text-secondary mb-2">Amount (ETH)</label>
+                    <input type="number" 
+                           id="donationAmount" 
+                           name="amount"
+                           class="form-control w-1/2"
+                           step="0.01" 
+                           min="0.01" 
+                           placeholder="0.00"
+                           required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="submitDonation(event)" class="donate-btn">
+                    <i class="fas fa-hand-holding-usd mr-2"></i>Donate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-content {
+    @apply bg-dark-secondary rounded-xl shadow-xl w-full max-w-md mx-auto;
+}
+
+.modal-header {
+    @apply p-6 border-b border-[#333] relative;
+}
+
+.modal-header h2 {
+    @apply text-xl font-semibold text-text-primary m-0;
+}
+
+.modal-body {
+    @apply p-6;
+}
+
+.modal-footer {
+    @apply p-6 border-t border-[#333] flex justify-end;
+}
+
+.form-control {
+    @apply w-full px-4 py-3 bg-dark-bg border border-[#333] rounded-lg text-text-primary 
+           text-sm transition-all focus:border-neon-green focus:outline-none focus:ring-1 focus:ring-neon-green;
+}
+
+.primary-btn {
+    @apply px-6 py-2 bg-neon-green text-dark-bg rounded-lg font-medium 
+           transition-all hover:bg-dark-green hover:transform hover:-translate-y-0.5
+           disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.close {
+    @apply absolute top-6 right-6 text-text-secondary text-xl cursor-pointer 
+           hover:text-text-primary transition-colors;
+}
+
+/* Toast Notifications */
+.toast {
+    @apply fixed bottom-4 right-4 bg-dark-secondary rounded-lg shadow-lg
+           transform translate-y-full opacity-0 transition-all duration-300
+           border border-[#333] max-w-md z-50;
+}
+
+.toast.show {
+    @apply translate-y-0 opacity-100;
+}
+
+.toast.success {
+    @apply border-neon-green;
+}
+
+.toast.error {
+    @apply border-red-500;
+}
+
+.toast-content {
+    @apply flex items-center gap-3 p-4;
+}
+
+.toast-content i {
+    @apply text-xl;
+}
+
+.toast.success i {
+    @apply text-neon-green;
+}
+
+.toast.error i {
+    @apply text-red-500;
+}
+
+.toast-content span {
+    @apply text-text-primary text-sm;
+}
+
+.toast-close {
+    @apply absolute top-2 right-2 text-text-secondary hover:text-text-primary
+           transition-colors text-lg leading-none;
+}
+
+/* Donate Button Styles */
+.donate-btn {
+    @apply px-6 py-3 bg-neon-green text-dark-bg rounded-lg font-semibold
+           transition-all duration-300 hover:bg-dark-green hover:shadow-[0_0_15px_rgba(0,255,157,0.5)]
+           hover:scale-105 active:scale-100 flex items-center gap-2;
+}
+
+.donate-btn i {
+    @apply text-lg;
+}
+
+.donate-btn span {
+    @apply text-base tracking-wide;
+}
+
+/* Deactivated Theme Styles for Dashboard */
+.deactivated-theme {
+    /* Replace all green colors with red equivalents */
+    --neon-green: #ff3366;
+    --dark-green: #cc2952;
+}
+
+/* Override progress fill color for deactivated projects */
+.deactivated-theme .progress-fill {
+    background-color: rgba(255, 51, 102, 0.5) !important;  /* Lighter red for deactivated projects */
+}
+
+.progress-bar {
+    @apply w-full h-2 bg-dark-bg rounded-full overflow-hidden border border-[#333];
+}
+
+.progress-fill {
+    @apply h-full transition-all duration-300;
+    background-color: var(--neon-green);  /* Default green for active projects */
+}
+
+/* Override progress fill color for deactivated projects */
+.deactivated-theme .progress-fill {
+    background-color: rgba(255, 51, 102, 0.5) !important;  /* Lighter red for deactivated projects */
+}
+
+/* Show green for active projects that are fully funded */
+.project-card[data-funds-raised="100"] .progress-fill {
+    background-color: var(--neon-green);
+}
+
+/* Deactivated Theme Styles */
+.deactivated-theme {
+    --neon-green: #ff3366;
+    --dark-green: #cc2952;
+}
+
+/* Ensure deactivated projects always show red progress bars */
+.deactivated-theme .progress-fill {
+    background: #ff3366 !important;  /* Solid red, no gradient */
+    box-shadow: none !important;  /* Remove any glow effects */
+}
+
+.project-header {
+    @apply flex justify-between items-start mb-2;
+}
+
+.header-top {
+    @apply flex flex-col gap-1.5;
+}
+
+.header-top h3 {
+    @apply text-lg font-semibold text-text-primary mb-0;
+}
+
+.status-badge {
+    @apply px-2 py-1 rounded-md text-sm font-medium;
+}
+
+.status-text {
+    @apply text-sm flex items-center gap-1.5;
+}
+
+.status-text > span {
+    @apply px-2 py-0.5 rounded-md font-medium;
+}
+
+.status-active {
+    @apply bg-neon-green/10 text-neon-green;
+}
+
+.status-inactive {
+    @apply bg-red-500/10 text-red-400;
+}
+
+.status-completed {
+    @apply bg-blue-500/10 text-blue-400;
+}
+
+/* Update progress stats to be more subtle */
+.progress-stats {
+    @apply flex justify-between text-sm text-text-secondary mb-1;
+}
+
+.progress-stats .raised {
+    @apply text-text-primary font-medium;
+}
+
+/* Remove the project-meta section as it's now redundant */
+
+.project-card {
+    @apply bg-dark-secondary rounded-xl p-6 border border-[#333] transition-all duration-300 
+           hover:border-[#444] hover:shadow-lg cursor-pointer relative;
+}
+
+.project-header {
+    @apply flex justify-between items-start mb-2;
+}
+
+.header-top {
+    @apply flex flex-col gap-1.5;
+}
+
+.project-card h3 {
+    @apply text-lg font-semibold text-text-primary;
+}
+
+.status-text {
+    @apply text-sm text-text-secondary;
+}
+
+.project-description {
+    @apply text-text-secondary text-sm mb-3;
+}
+
+.funding-progress {
+    @apply mb-3;
+}
+
+.progress-stats {
+    @apply flex justify-between text-sm text-text-secondary mb-1;
+}
+
+.creator-info {
+    @apply flex items-center gap-3 mt-2;
+}
+
+.creator-avatar {
+    @apply w-8 h-8 rounded-full bg-dark-bg flex items-center justify-center 
+           text-sm font-medium text-text-primary;
+}
+
+.creator-details {
+    @apply flex flex-col;
+}
+
+.creator-name {
+    @apply text-sm font-medium text-text-primary;
+}
+
+.creation-date {
+    @apply text-xs text-text-secondary;
+}
+
+/* Status styles */
+.status-indicator {
+    display: none;
+}
+
+.title-status-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.status-pill {
+    @apply flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.status-dot {
+    @apply w-2 h-2 rounded-full animate-pulse;
+}
+
+.status-active {
+    @apply bg-neon-green/10 text-neon-green border border-neon-green/20;
+}
+
+.status-active .status-dot {
+    @apply bg-neon-green;
+}
+
+.status-inactive {
+    @apply bg-red-500/10 text-red-400 border border-red-500/20;
+}
+
+.status-inactive .status-dot {
+    @apply bg-red-400;
+}
+
+.status-completed {
+    @apply bg-blue-500/10 text-blue-400 border border-blue-500/20;
+}
+
+.status-completed .status-dot {
+    @apply bg-blue-400;
+}
+
+/* Remove old status styles */
+.status-text, .status-badge, .status-text > span {
+    display: none;
+}
+
+/* Project Status Styles */
+.project-footer {
+    @apply flex justify-between items-center mt-4 pt-4 border-t border-[#333];
+}
+
+.project-status {
+    @apply px-3 py-1 rounded-full text-xs font-medium uppercase inline-block ml-0;
+}
+
+.project-status.active {
+    @apply bg-neon-green/10 text-neon-green;
+}
+
+.project-status.inactive {
+    @apply bg-red-500/10 text-red-400;
+    text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+}
+
+.project-status.completed {
+    @apply bg-blue-500/10 text-blue-400;
+}
+
+/* Remove old status styles */
+.status-indicator, .status-pill, .status-dot, .title-status-wrapper,
+.status-text, .status-badge, .status-text > span {
+    display: none;
+}
+
+/* Remove all status-related styles since they're now in project_status.css */
+.header-top, .project-status, .status-indicator, .status-pill, 
+.status-dot, .title-status-wrapper, .status-text, 
+.status-badge, .status-text > span {
+    /* These styles are now in project_status.css */
+}
+
+/* Update status section spacing */
+.status-section {
+    @apply flex justify-center py-2 border-t border-[#333];
+    margin: 0.5rem 0;
+}
+</style>
+
+<script>
+let debounceTimer;
+
+// Search functionality
+document.getElementById('search-input').addEventListener('input', function(e) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => performSearch(), 300);
+});
+
+// Filter toggle
+function toggleFilters() {
+    const filtersPanel = document.getElementById('filters-panel');
+    filtersPanel.style.display = filtersPanel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Search and filters
+function performSearch() {
+    const query = document.getElementById('search-input').value;
+    const status = document.getElementById('status-filter').value;
+    const minGoal = document.getElementById('min-goal').value;
+    const maxGoal = document.getElementById('max-goal').value;
+    const sortBy = document.getElementById('sort-by').value;
+    
+    const params = new URLSearchParams({
+        q: query,
+        status: status,
+        min_goal: minGoal,
+        max_goal: maxGoal,
+        sort_by: sortBy
+    });
+    
+    fetch(`/search-projects?${params}`)
+        .then(response => response.json())
+        .then(projects => {
+            const container = document.getElementById('projects-container');
+            
+            if (!projects.length) {
+                container.innerHTML = `
+                    <div class="no-projects">
+                        <p>No projects found matching your criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = projects.map(project => `
+                <div class="project-card ${project.status === 'inactive' ? 'deactivated-theme' : ''}" 
+                     onclick="goToProject('${project.id}', event)"
+                     data-project-id="${project.id}"
+                     data-funds-raised="${project.funds_raised || 0}"
+                     data-goal-amount="${project.goal_amount}"
+                     data-creator-id="${project.created_by}">
+                    <div class="project-header">
+                        <div class="header-top">
+                            <h3>${project.title}</h3>
+                        </div>
+                        ${project.created_by !== currentUserId && project.status === 'active' ? 
+                            `<button class="donate-btn" onclick="showDonateModal('${project.id}', '${project.title}')">
+                                Donate
+                            </button>` : ''
+                        }
+                    </div>
+                    
+                    <div class="project-body">
+                        <p class="project-description">${project.description.slice(0, 200)}...</p>
+                        
+                        <div class="funding-progress">
+                            <div class="progress-stats">
+                                <span class="raised">${project.funds_raised || 0} ETH</span>
+                                <span class="goal">of ${project.goal_amount} ETH goal</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${((project.funds_raised || 0) / project.goal_amount * 100).toFixed(0)}%"></div>
+                            </div>
+                            <div class="progress-percentage">
+                                ${((project.funds_raised || 0) / project.goal_amount * 100).toFixed(0)}% funded
+                            </div>
+                        </div>
+
+                        <div class="status-section">
+                            <span class="project-status ${project.status}">${project.status.charAt(0).toUpperCase() + project.status.slice(1)}</span>
+                        </div>
+
+                        <div class="creator-info">
+                            <div class="creator-avatar">${project.creator_name[0].toUpperCase()}</div>
+                            <div class="creator-details">
+                                <span class="creator-name">${project.creator_name}</span>
+                                <span class="creation-date">Created ${moment(project.created_at).fromNow()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            const container = document.getElementById('projects-container');
+            container.innerHTML = `
+                <div class="no-projects">
+                    <p>Error searching projects. Please try again.</p>
+                </div>
+            `;
+        });
+}
+
+// Filter changes trigger search
+document.querySelectorAll('#filters-panel select, #filters-panel input').forEach(element => {
+    element.addEventListener('change', performSearch);
+});
+
+// Add this at the top of your script to get the current user's ID
+const currentUserId = '{{ current_user.id }}';
+
+// Donate modal
+function showDonateModal(projectId, projectTitle) {
+    // Double check to prevent creators from donating to their own projects
+    const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
+    const creatorId = projectCard.dataset.creatorId;
+    
+    if (creatorId === '{{ current_user.id }}') {
+        showToast('You cannot donate to your own project', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('donate-modal');
+    modal.dataset.projectId = projectId;
+    modal.style.display = 'block';
+    document.getElementById('donationAmount').value = '';  // Reset the input
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('donate-modal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('donate-modal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Add click handler for close button
+document.querySelector('.close').addEventListener('click', closeModal);
+
+// Add toast notification system
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="toast-close">&times;</button>
+    `;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Update donation submission handler to use toast
+async function submitDonation(event) {
+    const modal = document.getElementById('donate-modal');
+    const projectId = modal.dataset.projectId;
+    const amount = parseFloat(document.getElementById('donationAmount').value);
+    
+    if (amount <= 0 || isNaN(amount)) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+    }
+
+    // Get current funds and goal amount from the project card
+    const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
+    const currentFunds = parseFloat(projectCard.dataset.fundsRaised);
+    const goalAmount = parseFloat(projectCard.dataset.goalAmount);
+    const remainingAmount = goalAmount - currentFunds;
+
+    // Check if donation would exceed goal
+    if (amount > remainingAmount) {
+        showToast(`Donation amount exceeds remaining goal. Maximum allowed: ${remainingAmount.toFixed(2)} ETH`, 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/update-project-funds/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ amount })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            modal.style.display = 'none';
+            showToast('Donation successful! Thank you for your support.', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            throw new Error(result.error || 'Donation failed');
+        }
+    } catch (error) {
+        console.error('Donation error:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// Add this function
+function goToProject(projectId, event) {
+    // Don't navigate if clicking on buttons or links
+    if (event.target.closest('.donate-btn') || event.target.closest('a')) {
+        return;
+    }
+    window.location.href = `/view-project/${projectId}`;
+}
+</script>
+{% endblock %} 
