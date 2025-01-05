@@ -12,37 +12,86 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
-    return redirect(url_for('auth.login'))
-
-@main.route('/dashboard')
-@login_required
-def dashboard():
     try:
-        # Get all projects from RTDB
+        # Get stats from RTDB
+        rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
+        all_projects = rtdb_ref.get() or {}
+        
+        # Calculate stats
+        active_projects = sum(1 for p in all_projects.values() if p.get('status') == 'active')
+        total_eth = sum(float(p.get('funds_raised', 0)) for p in all_projects.values())
+        
+        # Get unique researchers (creators + team members)
+        researchers = set()
+        for project in all_projects.values():
+            researchers.add(project.get('created_by'))
+            researchers.update(project.get('team_members', []))
+        researchers.discard(None)  # Remove None if present
+        
+        stats = {
+            'total_projects': active_projects,
+            'total_eth': round(total_eth, 2),
+            'total_researchers': len(researchers)
+        }
+        
+        # Get featured projects (top 3 by funding progress)
+        featured_projects = []
+        for project_id, project in all_projects.items():
+            if project.get('status') == 'active':
+                project['id'] = project_id
+                project['funding_progress'] = (float(project.get('funds_raised', 0)) / float(project.get('goal_amount', 1))) * 100
+                featured_projects.append(project)
+        
+        featured_projects.sort(key=lambda x: x['funding_progress'], reverse=True)
+        featured_projects = featured_projects[:3]
+        
+        return render_template('landing1.html',
+                             title='InnoFund - Decentralized Research Funding',
+                             stats=stats,
+                             featured_projects=featured_projects)
+    except Exception as e:
+        print(f"Error in index route: {str(e)}")
+        return render_template('landing1.html',
+                             title='InnoFund - Decentralized Research Funding',
+                             stats={'total_projects': 0, 'total_eth': 0, 'total_researchers': 0},
+                             featured_projects=[])
+
+@main.route('/feed')
+def feed():
+    try:
+        # Get initial projects from RTDB (just first 4)
         rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
         all_projects = rtdb_ref.get()
         
-        # Convert to list and shuffle for random feed
+        # Convert to list and get first 4
         projects_list = []
         if all_projects:
             for project_id, project in all_projects.items():
                 project['id'] = project_id
+                # Initialize votes if not present
+                project['upvotes'] = project.get('upvotes', 0)
+                project['downvotes'] = project.get('downvotes', 0)
                 projects_list.append(project)
-            
-            # Shuffle the list for random feed
-            from random import shuffle
-            shuffle(projects_list)
+            projects_list = projects_list[:4]  # Only get first 4 projects
         
         return render_template('dashboard.html', 
-                             title='Dashboard',
+                             title='Research Projects',
                              projects=projects_list)
     except Exception as e:
-        print("Dashboard error:", str(e))
+        print("Feed error:", str(e))
         import traceback
         traceback.print_exc()
-        return redirect(url_for('auth.logout'))
+        flash('Error loading projects', 'error')
+        return redirect(url_for('main.about'))
+
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    return redirect(url_for('main.feed'))
+
+@main.route('/about')
+def about():
+    return render_template('about.html', title='About')
 
 @main.route('/debug')
 def debug():
@@ -60,13 +109,47 @@ def profile():
         # Get the current user's ID
         user_doc = db.collection('users').document(current_user.id).get()
         if not user_doc.exists:
-            flash('Profile not found', 'error')
-            return redirect(url_for('main.dashboard'))
+            # Initialize new user document if it doesn't exist
+            user_data = {
+                'id': current_user.id,
+                'email': current_user.email,
+                'display_name': current_user.display_name,
+                'photo_url': current_user.photo_url,
+                'created_at': datetime.now(),
+                'bio': '',
+                'social_links': {
+                    'linkedin': '',
+                    'github': '',
+                    'twitter': ''
+                },
+                'privacy_settings': {
+                    'profile_private': False
+                }
+            }
+            db.collection('users').document(current_user.id).set(user_data)
+        else:
+            user_data = user_doc.to_dict()
+            user_data['id'] = current_user.id
             
-        user_data = user_doc.to_dict()
-        user_data['id'] = current_user.id
+            # Ensure all required fields exist
+            if 'created_at' not in user_data:
+                user_data['created_at'] = datetime.now()
+            if 'bio' not in user_data:
+                user_data['bio'] = ''
+            if 'social_links' not in user_data:
+                user_data['social_links'] = {'linkedin': '', 'github': '', 'twitter': ''}
+            if 'privacy_settings' not in user_data:
+                user_data['privacy_settings'] = {'profile_private': False}
+        
+        # Debug output
+        print("\n=== Profile Data ===")
+        print(f"User ID: {current_user.id}")
+        print(f"Is Authenticated: {current_user.is_authenticated}")
+        print(f"User Data: {user_data}")
+        
         # Pass the public profile URL instead of using the current route
         profile_url = url_for('main.public_profile', user_id=current_user.id, _external=True)
+        
         return render_template('profile.html', 
                              title='My Profile', 
                              user=user_data, 
@@ -94,6 +177,11 @@ def public_profile(user_id):
         # Check if the profile belongs to the current user
         is_owner = current_user.is_authenticated and current_user.id == user_id
         
+        # Check privacy settings
+        if not is_owner and user_data.get('privacy_settings', {}).get('profile_private', False):
+            flash('This profile is private', 'error')
+            return redirect(url_for('main.dashboard'))
+        
         # Generate the shareable URL
         profile_url = url_for('main.public_profile', user_id=user_id, _external=True)
         
@@ -113,6 +201,15 @@ def public_profile(user_id):
 def create_project():
     try:
         if request.method == 'POST':
+            # Validate goal amount
+            goal_amount = float(request.form['goal_amount'])
+            if goal_amount <= 0:
+                flash('Goal amount must be greater than 0', 'error')
+                return redirect(url_for('main.create_project'))
+            if goal_amount > 200:
+                flash('Goal amount cannot exceed 200 ETH', 'error')
+                return redirect(url_for('main.create_project'))
+
             print("\n=== Starting Project Creation ===")
             
             # Debug Firebase apps
@@ -157,7 +254,9 @@ def create_project():
                 'created_by': current_user.id,
                 'creator_name': current_user.display_name,
                 'status': 'active',
-                'documents': []
+                'documents': [],
+                'upvotes': 0,  # Initialize upvotes
+                'downvotes': 0  # Initialize downvotes
             }
             print("\nProject Data:", project_data)
 
@@ -250,31 +349,105 @@ def create_project():
 @login_required
 def my_projects():
     try:
+        print("\n=== Loading My Projects ===")
+        print(f"User ID: {current_user.id}")
+        
         # Get user's project IDs from Firestore
         user_doc = db.collection('users').document(current_user.id).get()
+        if not user_doc.exists:
+            print("User document not found in Firestore")
+            flash('User profile not found', 'error')
+            return redirect(url_for('main.dashboard'))
+            
         user_data = user_doc.to_dict()
-        project_ids = user_data.get('projects', [])
+        stored_project_ids = user_data.get('projects', [])
+        print(f"Found {len(stored_project_ids)} stored project IDs")
 
-        # Get project details from RTDB
+        # Get all RTDB projects
         rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
+        all_projects = rtdb_ref.get() or {}
+        valid_projects = {}
+        
+        # Find valid projects that belong to the user
+        for project_id, project_data in all_projects.items():
+            if project_data and isinstance(project_data, dict):
+                if project_data.get('created_by') == current_user.id:
+                    valid_projects[project_id] = project_data
+                    
+        print(f"Found {len(valid_projects)} valid projects for user")
+        
+        # Update user's project list if it's different
+        valid_project_ids = list(valid_projects.keys())
+        if set(valid_project_ids) != set(stored_project_ids):
+            print("Updating user's project list in Firestore")
+            db.collection('users').document(current_user.id).update({
+                'projects': valid_project_ids
+            })
+            flash('Your project list has been updated.', 'info')
+        
+        # Get initial projects (first 6)
         projects = []
+        for project_id in list(valid_projects.keys())[:6]:
+            project_data = valid_projects[project_id]
+            project_data['id'] = project_id
+            projects.append(project_data)
         
-        for project_id in project_ids:
-            project_data = rtdb_ref.child(project_id).get()
-            if project_data:
-                project_data['id'] = project_id
-                projects.append(project_data)
-        
+        print(f"Returning {len(projects)} projects")
         return render_template('my_projects.html', 
                              title='My Projects',
-                             projects=projects)
+                             projects=projects,
+                             has_more=len(valid_projects) > 6)
                              
     except Exception as e:
-        print("My projects error:", str(e))
+        print("\n!!! My Projects Error !!!")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
         import traceback
-        traceback.print_exc()
+        print("Full traceback:")
+        print(traceback.format_exc())
         flash('Error loading projects', 'error')
         return redirect(url_for('main.dashboard'))
+
+@main.route('/api/my-projects')
+@login_required
+def get_my_projects():
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = 6
+        start_idx = (page - 1) * per_page
+
+        # Get all RTDB projects
+        rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
+        all_projects = rtdb_ref.get() or {}
+        
+        # Filter projects that belong to the user
+        user_projects = {
+            pid: data for pid, data in all_projects.items()
+            if data and isinstance(data, dict) and data.get('created_by') == current_user.id
+        }
+        
+        # Sort projects by creation date (newest first)
+        sorted_projects = sorted(
+            user_projects.items(),
+            key=lambda x: x[1].get('created_at', ''),
+            reverse=True
+        )
+        
+        # Paginate
+        page_projects = sorted_projects[start_idx:start_idx + per_page]
+        projects = []
+        for project_id, project_data in page_projects:
+            project_data['id'] = project_id
+            projects.append(project_data)
+
+        return jsonify({
+            'projects': projects,
+            'has_more': start_idx + per_page < len(sorted_projects)
+        })
+
+    except Exception as e:
+        print("API my projects error:", str(e))
+        return jsonify({'error': str(e)}), 500
 
 @main.route('/edit-project/<project_id>', methods=['GET', 'POST'])
 @login_required
@@ -495,62 +668,112 @@ def search_projects():
 @main.route('/view-project/<project_id>')
 def view_project(project_id):
     try:
-        # Get project details from RTDB
-        rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
-        project = rtdb_ref.child(project_id).get()
+        print(f"\n=== Starting View Project ===")
+        print(f"Project ID: {project_id}")
+        
+        # Get project data
+        project_ref = rtdb.reference('projects', app=get_app('rtdb')).child(project_id)
+        print("Got project reference")
+        project = project_ref.get()
+        print(f"Project data: {project}")
         
         if not project:
+            print("Project not found")
             flash('Project not found', 'error')
-            return redirect(url_for('main.dashboard'))
+            return redirect(url_for('main.feed'))
             
-        # Add project ID to the data
         project['id'] = project_id
         
-        # Get creator details from Firestore
-        creator = db.collection('users').document(project['created_by']).get()
-        creator_data = creator.to_dict() if creator.exists else None
-        
-        # Ensure wallet_address is included in creator_data
-        if creator_data and 'wallet_address' not in creator_data:
-            creator_data['wallet_address'] = None
-        
-        # Get team member details from Firestore
-        team_members_data = []
-        for member_id in project.get('team_members', []):
-            # Clean up the member_id if it's a full URL
-            if isinstance(member_id, str):
-                # Extract just the ID from the URL if present
-                member_id = member_id.split('/')[-1]
-            
+        # Store browsing history if user is logged in
+        if current_user.is_authenticated:
             try:
-                member_doc = db.collection('users').document(member_id).get()
-                if member_doc.exists:
-                    member_data = member_doc.to_dict()
-                    team_members_data.append({
-                        'name': member_data.get('display_name', 'Unknown'),
-                        'photo_url': member_data.get('photo_url'),
-                        'title': member_data.get('title', 'Team Member'),
-                        'id': member_id
-                    })
-            except Exception as member_error:
-                print(f"Error fetching member {member_id}:", str(member_error))
-                continue
+                print(f"Storing browsing history for user: {current_user.id}")
+                user_doc_ref = db.collection('users').document(current_user.id)
+                
+                # Get current browsing history or initialize empty list
+                user_doc = user_doc_ref.get()
+                user_data = user_doc.to_dict() if user_doc.exists else {}
+                browsing_history = user_data.get('browsing_history', [])
+                
+                # Create new history entry
+                history_entry = {
+                    'project_id': project_id,
+                    'project_title': project.get('title', 'Unknown Project'),
+                    'timestamp': datetime.now().isoformat(),
+                    'category': project.get('category', 'Uncategorized')
+                }
+                
+                # Add to beginning of list and keep only last 100 entries
+                browsing_history.insert(0, history_entry)
+                browsing_history = browsing_history[:100]
+                
+                # Update user document
+                user_doc_ref.set({
+                    'browsing_history': browsing_history
+                }, merge=True)
+                print("Browsing history updated successfully")
+                
+            except Exception as history_error:
+                print(f"Error storing browsing history: {str(history_error)}")
+                # Continue execution even if history storage fails
+        
+        # Get user's vote if logged in
+        user_vote = None
+        if current_user.is_authenticated:
+            print(f"Getting votes for user: {current_user.id}")
+            votes_ref = rtdb.reference('project_votes', app=get_app('rtdb')).child(project_id)
+            user_votes = votes_ref.get() or {}
+            user_vote = user_votes.get(current_user.id)
+            print(f"User vote: {user_vote}")
+        
+        # Get creator info
+        creator = None
+        if project.get('created_by'):
+            print(f"Getting creator info for: {project.get('created_by')}")
+            creator_doc = db.collection('users').document(project['created_by']).get()
+            if creator_doc.exists:
+                creator = creator_doc.to_dict()
+                print("Creator found")
+            else:
+                print("Creator document does not exist")
+        
+        # Get team member details
+        team_members = []
+        for member_id in project.get('team_members', []):
+            print(f"Getting team member info for: {member_id}")
+            member_doc = db.collection('users').document(member_id).get()
+            if member_doc.exists:
+                member_data = member_doc.to_dict()
+                team_members.append({
+                    'id': member_id,
+                    'name': member_data.get('display_name', 'Unknown User'),
+                    'photo_url': member_data.get('photo_url'),
+                    'title': member_data.get('title', 'Team Member')
+                })
+                print(f"Team member found: {member_data.get('display_name')}")
+            else:
+                print(f"Team member document does not exist for ID: {member_id}")
         
         # Update project with detailed team member data
-        project['team_members'] = team_members_data
+        project['team_members'] = team_members
         
+        print("Rendering template...")
         return render_template('view_project.html',
-                             title=project['title'],
+                             title=project.get('title', 'View Project'),
                              project=project,
-                             creator=creator_data,
-                             is_owner=current_user.is_authenticated and current_user.id == project['created_by'])
+                             creator=creator,
+                             is_owner=current_user.is_authenticated and current_user.id == project.get('created_by'),
+                             user_vote=user_vote)
                              
     except Exception as e:
-        print("View project error:", str(e))
+        print("\n!!! View Project Error !!!")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
         import traceback
-        traceback.print_exc()
+        print("Full traceback:")
+        print(traceback.format_exc())
         flash('Error loading project', 'error')
-        return redirect(url_for('main.dashboard'))
+        return redirect(url_for('main.feed'))
 
 @main.route('/connect-wallet')
 @login_required
@@ -609,7 +832,7 @@ def get_user_data(user_id):
 def deactivate_project(project_id):
     try:
         # Get project reference
-        project_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project_ref = rtdb.reference('projects', app=get_app('rtdb')).child(project_id)
         project = project_ref.get()
         
         if not project:
@@ -629,4 +852,276 @@ def deactivate_project(project_id):
         
     except Exception as e:
         print("Deactivate project error:", str(e))
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
         return jsonify({'error': 'Error deactivating project'}), 500
+
+@main.route('/api/projects')
+def get_paginated_projects():
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = 4  # Number of projects per page
+        
+        # Get all projects from RTDB
+        rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
+        all_projects = rtdb_ref.get()
+        
+        if not all_projects:
+            return jsonify({'projects': [], 'has_more': False})
+        
+        # Convert to list
+        projects_list = []
+        for project_id, project in all_projects.items():
+            project['id'] = project_id
+            projects_list.append(project)
+        
+        # Calculate pagination
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_projects = projects_list[start_idx:end_idx]
+        
+        return jsonify({
+            'projects': paginated_projects,
+            'has_more': end_idx < len(projects_list)
+        })
+    except Exception as e:
+        print("Pagination error:", str(e))
+        return jsonify({'error': 'Failed to load projects'}), 500
+
+@main.route('/api/vote/<project_id>', methods=['POST'])
+@login_required
+def vote_project(project_id):
+    try:
+        data = request.get_json()
+        vote_type = data.get('vote_type')
+        
+        if vote_type not in ['up', 'down']:
+            return jsonify({'success': False, 'error': 'Invalid vote type'}), 400
+            
+        # Get project reference from RTDB
+        project_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = project_ref.get()
+        
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+            
+        # Get user's current vote
+        votes_ref = rtdb.reference(f'project_votes/{project_id}', app=get_app('rtdb'))
+        user_votes = votes_ref.get() or {}
+        current_vote = user_votes.get(current_user.id)
+        
+        # Update vote counts
+        upvotes = project.get('upvotes', 0)
+        downvotes = project.get('downvotes', 0)
+        
+        # Remove previous vote if exists
+        if current_vote == 'up':
+            upvotes = max(0, upvotes - 1)
+        elif current_vote == 'down':
+            downvotes = max(0, downvotes - 1)
+        
+        # Add new vote if different from current
+        new_vote = None
+        if vote_type != current_vote:
+            if vote_type == 'up':
+                upvotes += 1
+                new_vote = 'up'
+            else:
+                downvotes += 1
+                new_vote = 'down'
+        
+        # Update project votes
+        project_ref.update({
+            'upvotes': upvotes,
+            'downvotes': downvotes
+        })
+        
+        # Update user's vote
+        if new_vote:
+            votes_ref.update({current_user.id: new_vote})
+        else:
+            votes_ref.child(current_user.id).delete()
+        
+        return jsonify({
+            'success': True,
+            'upvotes': upvotes,
+            'downvotes': downvotes,
+            'user_vote': new_vote
+        })
+        
+    except Exception as e:
+        print("Voting error:", str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@main.route('/report_project', methods=['POST'])
+@login_required
+def report_project():
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id')
+        reason = data.get('reason')
+        details = data.get('details')
+
+        if not all([project_id, reason]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Get project title from RTDB
+        project_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = project_ref.get()
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+
+        # Create report document
+        report = {
+            'project_id': project_id,
+            'reporter_id': current_user.id,
+            'reporter_name': current_user.display_name,  # Use display_name instead of name
+            'reason': reason,
+            'details': details,
+            'status': 'pending',
+            'reported_at': datetime.utcnow(),
+            'project_title': project.get('title', 'Unknown Project')
+        }
+
+        # Add report to Firestore
+        db.collection('reported_projects').add(report)
+
+        return jsonify({'message': 'Report submitted successfully'}), 200
+
+    except Exception as e:
+        print(f"Error reporting project: {str(e)}")  # Use print instead of app.logger
+        return jsonify({'error': 'An error occurred while submitting the report'}), 500
+
+@main.route('/api/donate/<project_id>', methods=['POST'])
+@login_required
+def donate(project_id):
+    try:
+        data = request.get_json()
+        amount = float(data.get('amount', 0))
+        
+        if amount <= 0:
+            return jsonify({'success': False, 'error': 'Invalid donation amount'}), 400
+            
+        # Get project from RTDB
+        rtdb_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = rtdb_ref.get()
+        
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+            
+        if project.get('status') != 'active':
+            return jsonify({'success': False, 'error': 'Project is not active'}), 400
+            
+        # Update project's funds_raised
+        current_funds = float(project.get('funds_raised', 0))
+        new_funds = current_funds + amount
+        
+        # Update in RTDB
+        rtdb_ref.update({
+            'funds_raised': new_funds
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Donation processed successfully',
+            'new_total': new_funds
+        })
+        
+    except Exception as e:
+        print("Donation error:", str(e))
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': 'An error occurred while processing the donation'}), 500
+
+@main.route('/transaction-history')
+@login_required
+def transaction_history():
+    try:
+        print("\n=== Loading Transaction History ===")
+        print(f"User ID: {current_user.id}")
+        
+        # Get all projects from RTDB
+        rtdb_ref = rtdb.reference('projects', app=get_app('rtdb'))
+        all_projects = rtdb_ref.get() or {}
+        
+        # Collect all transactions where user is involved
+        transactions = []
+        for project_id, project_data in all_projects.items():
+            if not project_data or not isinstance(project_data, dict):
+                continue
+                
+            # Add transactions where user is the contributor
+            project_transactions = project_data.get('transactions', [])
+            if isinstance(project_transactions, list):
+                for tx in project_transactions:
+                    if tx.get('contributor_id') == current_user.id:
+                        tx['type'] = 'contribution'
+                        tx['project'] = {
+                            'id': project_id,
+                            'title': project_data.get('title', 'Unknown Project'),
+                            'creator_name': project_data.get('creator_name', 'Unknown Creator')
+                        }
+                        transactions.append(tx)
+            
+            # Add received contributions where user is the project creator
+            if project_data.get('created_by') == current_user.id:
+                for tx in project_transactions:
+                    tx['type'] = 'received'
+                    tx['project'] = {
+                        'id': project_id,
+                        'title': project_data.get('title', 'Unknown Project')
+                    }
+                    transactions.append(tx)
+        
+        # Sort transactions by timestamp (newest first)
+        transactions.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        print(f"Found {len(transactions)} transactions")
+        
+        return render_template('transaction_history.html',
+                             title='Transaction History',
+                             transactions=transactions)
+                             
+    except Exception as e:
+        print("\n!!! Transaction History Error !!!")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
+        flash('Error loading transaction history', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main.route('/update-profile', methods=['POST'])
+@login_required
+def update_profile():
+    try:
+        data = request.get_json()
+        
+        # Get current user document
+        user_doc = db.collection('users').document(current_user.id)
+        
+        # Prepare update data
+        update_data = {
+            'bio': data.get('bio', ''),
+            'social_links': {
+                'linkedin': data.get('social_links', {}).get('linkedin', ''),
+                'github': data.get('social_links', {}).get('github', ''),
+                'twitter': data.get('social_links', {}).get('twitter', '')
+            },
+            'privacy_settings': {
+                'profile_private': data.get('privacy_settings', {}).get('profile_private', False)
+            },
+            'updated_at': datetime.now()
+        }
+        
+        # Update the user document
+        user_doc.update(update_data)
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        print("Profile update error:", str(e))
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to update profile'}), 500

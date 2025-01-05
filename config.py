@@ -31,3 +31,21 @@ class Config:
     # RTDB Firebase
     RTDB_FIREBASE_CREDENTIALS = os.environ.get('RTDB_FIREBASE_CREDENTIALS')
     RTDB_DATABASE_URL = os.environ.get('RTDB_DATABASE_URL') 
+    
+    # Test Configuration
+    TEST_USER_EMAIL = 'test@innofund.com'
+    TEST_USER_PASSWORD = 'testpass123'
+    TEST_USER_WALLET = '0x1234567890abcdef'
+    
+    TEST_DONOR_EMAIL = 'donor@innofund.com'
+    TEST_DONOR_PASSWORD = 'donorpass123'
+    TEST_DONOR_WALLET = '0xabcdef1234567890'
+    
+    # Admin credentials for test cleanup
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@innofund.com')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'adminpass123')
+
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory database for tests
+    WTF_CSRF_ENABLED = False  # Disable CSRF for testing 

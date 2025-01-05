@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="about-container">
+    <div class="about-header">
+        <h1>About InnoFund</h1>
+        <p class="tagline">Revolutionizing Research Funding Through Web3</p>
+    </div>
+
+    <div class="about-content">
+        <section class="intro-section">
+            <h2>What is InnoFund?</h2>
+            <p>InnoFund is a pioneering Web3-based DeFi application designed to transform how research papers are funded. Our platform creates a bridge between researchers and supporters, enabling decentralized funding for groundbreaking research projects.</p>
+        </section>
+
+        <section class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="steps-grid">
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Submit Project</h3>
+                    <p>Researchers create and submit their research projects to the platform</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Community Review</h3>
+                    <p>Projects are reviewed and evaluated by the community through upvotes and feedback</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <h3>Receive Funding</h3>
+                    <p>Approved projects receive funding from supportive donors</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Track Progress</h3>
+                    <p>Researchers can track their project's funding progress and community engagement</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-flag"></i>
+                    </div>
+                    <h3>Quality Control</h3>
+                    <p>Community can report suspicious projects for admin review to maintain platform integrity</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h3>Admin Review</h3>
+                    <p>Dedicated admin dashboard to review reported projects and ensure platform safety</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="benefits">
+            <h2>Benefits</h2>
+            <div class="benefits-grid">
+                <div class="benefit">
+                    <i class="fas fa-link"></i>
+                    <h3>Decentralized & Transparent</h3>
+                    <p>Built on blockchain technology ensuring complete transparency and trust in funding</p>
+                </div>
+                <div class="benefit">
+                    <i class="fas fa-users"></i>
+                    <h3>Community Driven</h3>
+                    <p>Empowering the community through voting and active participation in project selection</p>
+                </div>
+                <div class="benefit">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Secure & Monitored</h3>
+                    <p>Multi-layer security with community reporting and admin oversight for platform integrity</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="tech-stack">
+            <h2>Technology Stack</h2>
+            <div class="tech-grid">
+                <div class="tech">
+                    <i class="fab fa-python"></i>
+                    <span>Flask Backend</span>
+                </div>
+                <div class="tech">
+                    <i class="fab fa-html5"></i>
+                    <span>HTML5 & CSS3</span>
+                </div>
+                <div class="tech">
+                    <i class="fab fa-js"></i>
+                    <span>JavaScript</span>
+                </div>
+                <div class="tech">
+                    <i class="fas fa-database"></i>
+                    <span>Firebase RTDB</span>
+                </div>
+                <div class="tech">
+                    <i class="fas fa-server"></i>
+                    <span>Cloud Firestore</span>
+                </div>
+                <div class="tech">
+                    <i class="fab fa-ethereum"></i>
+                    <span>Ethereum & Web3</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="future">
+            <h2>Future Plans</h2>
+            <div class="future-list">
+                <div class="future-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <p>Expanding platform features and capabilities</p>
+                </div>
+                <div class="future-item">
+                    <i class="fas fa-paint-brush"></i>
+                    <p>Enhancing user experience and interface</p>
+                </div>
+                <div class="future-item">
+                    <i class="fas fa-globe"></i>
+                    <p>Extending support to diverse research domains</p>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<style>
+.about-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: var(--bg-secondary);
+}
+
+.about-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+    background: linear-gradient(135deg, #3b3f8c, #000000);
+    color: var(--text-light);
+    border-radius: 12px;
+}
+
+.about-header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.about-header .tagline {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.about-content {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    padding: 3rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.about-content section {
+    margin-bottom: 3rem;
+}
+
+.about-content h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.step {
+    text-align: center;
+    padding: 1.5rem;
+    background: #2d2f36;
+    border-radius: 8px;
+    transition: transform 0.2s;
+    color: var(--text-light);
+}
+
+.step:hover {
+    transform: translateY(-5px);
+}
+
+.step-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 1rem;
+    background: #4e54c8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-icon i {
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.benefit {
+    text-align: center;
+    padding: 2rem;
+    background: #2d2f36;
+    border-radius: 8px;
+    transition: transform 0.2s;
+    color: var(--text-light);
+}
+
+.benefit:hover {
+    transform: translateY(-5px);
+}
+
+.benefit i {
+    font-size: 2rem;
+    color: #8f94fb;
+    margin-bottom: 1rem;
+}
+
+.tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.tech {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #2d2f36;
+    border-radius: 8px;
+    transition: transform 0.2s;
+    color: var(--text-light);
+}
+
+.tech:hover {
+    transform: translateY(-3px);
+}
+
+.tech i {
+    font-size: 1.5rem;
+    color: #4e54c8;
+}
+
+.future-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.future-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #2d2f36;
+    border-radius: 8px;
+    transition: transform 0.2s;
+    color: var(--text-light);
+}
+
+.future-item:hover {
+    transform: translateY(-3px);
+}
+
+.future-item i {
+    font-size: 1.5rem;
+    color: #8f94fb;
+}
+
+@media (max-width: 768px) {
+    .about-container {
+        padding: 1rem;
+    }
+
+    .about-content {
+        padding: 1.5rem;
+    }
+
+    .about-header h1 {
+        font-size: 2.5rem;
+    }
+
+    .steps-grid, .benefits-grid, .tech-grid, .future-list {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %} 

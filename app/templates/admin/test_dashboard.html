@@ -1,0 +1,289 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="test-dashboard">
+    <div class="dashboard-header">
+        <h1>Site Functionality Tests</h1>
+        <button onclick="runTests()" class="run-tests-btn">
+            <i class="fas fa-play"></i> Run Tests Now
+        </button>
+    </div>
+
+    <div class="test-summary">
+        <div class="summary-card total-tests">
+            <h3>Total Tests</h3>
+            <span id="total-tests">-</span>
+        </div>
+        <div class="summary-card success-rate">
+            <h3>Success Rate</h3>
+            <span id="success-rate">-</span>
+        </div>
+        <div class="summary-card last-run">
+            <h3>Last Run</h3>
+            <span id="last-run">-</span>
+        </div>
+    </div>
+
+    <div class="test-results">
+        <h2>Recent Test Results</h2>
+        <div class="results-table-container">
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th>Tests Run</th>
+                        <th>Failures</th>
+                        <th>Errors</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <!-- Results will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Test Output Modal -->
+    <div id="output-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Test Output</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <pre id="test-output"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.test-dashboard {
+    padding: 2rem;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.run-tests-btn {
+    padding: 0.75rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.run-tests-btn:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.test-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.summary-card h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.summary-card span {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.test-results {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+.results-table-container {
+    overflow-x: auto;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.results-table th,
+.results-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.results-table th {
+    background-color: var(--table-header-bg);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-success {
+    background-color: rgba(0, 200, 83, 0.1);
+    color: #00c853;
+}
+
+.status-failure {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+
+.view-output-btn {
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-output-btn:hover {
+    color: var(--primary-color-dark);
+}
+
+#test-output {
+    white-space: pre-wrap;
+    font-family: monospace;
+    padding: 1rem;
+    background-color: var(--code-bg);
+    border-radius: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+</style>
+
+<script>
+let testResults = [];
+
+function formatDuration(seconds) {
+    return `${seconds.toFixed(2)}s`;
+}
+
+function formatTimestamp(isoString) {
+    return new Date(isoString).toLocaleString();
+}
+
+function updateSummary() {
+    if (testResults.length === 0) return;
+    
+    const latest = testResults[0];
+    document.getElementById('total-tests').textContent = latest.total_tests;
+    document.getElementById('success-rate').textContent = 
+        `${((latest.total_tests - latest.failures - latest.errors) / latest.total_tests * 100).toFixed(1)}%`;
+    document.getElementById('last-run').textContent = formatTimestamp(latest.timestamp);
+}
+
+function updateResultsTable() {
+    const tbody = document.getElementById('results-body');
+    tbody.innerHTML = testResults.map(result => `
+        <tr>
+            <td>${formatTimestamp(result.timestamp)}</td>
+            <td>
+                <span class="status-badge ${result.success ? 'status-success' : 'status-failure'}">
+                    ${result.success ? 'Success' : 'Failed'}
+                </span>
+            </td>
+            <td>${result.total_tests}</td>
+            <td>${result.failures}</td>
+            <td>${result.errors}</td>
+            <td>${formatDuration(result.duration)}</td>
+            <td>
+                <button onclick="viewOutput('${result.id}')" class="view-output-btn">
+                    <i class="fas fa-terminal"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadTestResults() {
+    try {
+        const response = await fetch('/admin/api/test-results');
+        testResults = await response.json();
+        updateSummary();
+        updateResultsTable();
+    } catch (error) {
+        console.error('Error loading test results:', error);
+    }
+}
+
+async function runTests() {
+    const button = document.querySelector('.run-tests-btn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+    
+    try {
+        const response = await fetch('/admin/api/run-tests', { method: 'POST' });
+        const result = await response.json();
+        testResults.unshift(result);
+        updateSummary();
+        updateResultsTable();
+    } catch (error) {
+        console.error('Error running tests:', error);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-play"></i> Run Tests Now';
+    }
+}
+
+function viewOutput(resultId) {
+    const result = testResults.find(r => r.id === parseInt(resultId));
+    if (!result) return;
+    
+    document.getElementById('test-output').textContent = result.output;
+    document.getElementById('output-modal').style.display = 'block';
+}
+
+// Modal handling
+document.querySelector('#output-modal .close').onclick = function() {
+    document.getElementById('output-modal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('output-modal');
+    if (event.target === modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', loadTestResults);
+
+// Refresh results every minute
+setInterval(loadTestResults, 60000);
+</script>
+{% endblock %} 

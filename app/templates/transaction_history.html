@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/project_status.css') }}">
+<style>
+html, body {
+    min-height: 100vh !important;
+    background: 
+        radial-gradient(circle at 0 0, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 100% 0, rgba(139, 92, 246, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 0 100%, rgba(139, 92, 246, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+        #000000 !important;
+    background-attachment: fixed !important;
+}
+
+body::before,
+body::after {
+    display: none !important;
+}
+
+.transactions-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.transactions-header {
+    margin-bottom: 2rem;
+}
+
+.transactions-header h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+}
+
+.tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tab.active {
+    color: var(--text-primary);
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.transaction-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.transaction-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.transaction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.transaction-project {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.transaction-project:hover {
+    text-decoration: underline;
+}
+
+.transaction-amount {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.transaction-amount.contribution {
+    color: var(--neon-red);
+}
+
+.transaction-amount.received {
+    color: var(--neon-green);
+}
+
+.transaction-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.transaction-date {
+    color: var(--text-secondary);
+}
+
+.no-transactions {
+    text-align: center;
+    padding: 3rem;
+    background: var(--card-bg);
+    border-radius: 12px;
+    color: var(--text-secondary);
+}
+
+.no-transactions p {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.create-btn {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background: var(--gradient-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: opacity 0.2s;
+}
+
+.create-btn:hover {
+    opacity: 0.9;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="transactions-container">
+    <div class="transactions-header">
+        <h2>Transaction History</h2>
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('all')">All Transactions</div>
+            <div class="tab" onclick="showTab('debits')">Debits (Sent)</div>
+            <div class="tab" onclick="showTab('credits')">Credits (Received)</div>
+        </div>
+    </div>
+
+    {% if transactions %}
+        <div id="all-tab" class="tab-content active">
+            <div class="transactions-list">
+                {% for tx in transactions %}
+                <div class="transaction-card">
+                    <div class="transaction-header">
+                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
+                            {{ tx.project.title }}
+                        </a>
+                        <span class="transaction-amount {{ tx.type }}">
+                            {% if tx.type == 'contribution' %}
+                            -{{ tx.amount }} ETH
+                            {% else %}
+                            +{{ tx.amount }} ETH
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="transaction-details">
+                        <span class="transaction-type">
+                            {% if tx.type == 'contribution' %}
+                            Contributed to {{ tx.project.creator_name }}'s project
+                            {% else %}
+                            Received from {{ tx.contributor_name }}
+                            {% endif %}
+                        </span>
+                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="debits-tab" class="tab-content">
+            <div class="transactions-list">
+                {% for tx in transactions if tx.type == 'contribution' %}
+                <div class="transaction-card">
+                    <div class="transaction-header">
+                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
+                            {{ tx.project.title }}
+                        </a>
+                        <span class="transaction-amount contribution">
+                            -{{ tx.amount }} ETH
+                        </span>
+                    </div>
+                    <div class="transaction-details">
+                        <span class="transaction-type">
+                            Contributed to {{ tx.project.creator_name }}'s project
+                        </span>
+                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-transactions">
+                    <p>You haven't made any contributions yet.</p>
+                    <a href="{{ url_for('main.feed') }}" class="create-btn">Browse Projects</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="credits-tab" class="tab-content">
+            <div class="transactions-list">
+                {% for tx in transactions if tx.type == 'received' %}
+                <div class="transaction-card">
+                    <div class="transaction-header">
+                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
+                            {{ tx.project.title }}
+                        </a>
+                        <span class="transaction-amount received">
+                            +{{ tx.amount }} ETH
+                        </span>
+                    </div>
+                    <div class="transaction-details">
+                        <span class="transaction-type">
+                            Received from {{ tx.contributor_name }}
+                        </span>
+                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-transactions">
+                    <p>You haven't received any contributions yet.</p>
+                    <a href="{{ url_for('main.create_project') }}" class="create-btn">Create a Project</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="no-transactions">
+            <p>You haven't made any transactions yet.</p>
+            <a href="{{ url_for('main.feed') }}" class="create-btn">Browse Projects</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function showTab(tabName) {
+    // Update tab active states
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+    
+    // Update content visibility
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+</script>
+{% endblock %} 

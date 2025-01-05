@@ -50,7 +50,16 @@
 
                 <div class="form-group">
                     <label class="form-label">Goal Amount (ETH)</label>
-                    <input type="number" name="goal_amount" class="form-control" step="0.01" required>
+                    <input type="number" 
+                           name="goal_amount" 
+                           class="form-control" 
+                           step="0.01" 
+                           min="0.01"
+                           max="200"
+                           oninput="validateGoalAmount(this)"
+                           required>
+                    <span class="form-hint">Maximum goal amount: 200 ETH</span>
+                    <span class="error-message" style="display: none;">Goal amount cannot exceed 200 ETH</span>
                 </div>
             </div>
 
@@ -138,6 +147,14 @@
 
 .remove-member {
     @apply text-text-secondary hover:text-red-500 text-xl font-medium transition-colors ml-2;
+}
+
+.form-hint {
+    @apply text-text-secondary text-xs mt-1 block;
+}
+
+.error-message {
+    @apply text-red-500 text-xs mt-1 block;
 }
 </style>
 
@@ -308,5 +325,18 @@ document.querySelector('form').addEventListener('submit', function(e) {
         return;
     }
 });
+
+function validateGoalAmount(input) {
+    const errorMessage = input.parentElement.querySelector('.error-message');
+    if (input.value > 200) {
+        input.value = 200;
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+            errorMessage.style.display = 'none';
+        }, 3000);
+    } else {
+        errorMessage.style.display = 'none';
+    }
+}
 </script>
 {% endblock %} 

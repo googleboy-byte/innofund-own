@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="landing-container">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Fund Your Research Dreams</h1>
+            <p class="hero-subtitle">The first decentralized platform connecting researchers with crypto funding</p>
+            <div class="hero-cta">
+                <a href="{{ url_for('main.feed') }}" class="cta-button primary">
+                    <i class="fas fa-search"></i> Explore Projects
+                </a>
+                {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.login') }}" class="cta-button secondary">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.about') }}" class="cta-button outline">
+                    <i class="fas fa-info-circle"></i> About Us
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.total_projects }}</span>
+                    <span class="stat-label">Active Projects</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.total_eth }}Ξ</span>
+                    <span class="stat-label">Total Funded</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.total_researchers }}</span>
+                    <span class="stat-label">Researchers</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="featured-projects">
+                {% for project in featured_projects %}
+                <a href="{{ url_for('main.view_project', project_id=project.id) }}" class="featured-card">
+                    <div class="card-header">
+                        <h3>{{ project.title }}</h3>
+                        <span class="funding-progress">{{ ((project.funds_raised / project.goal_amount) * 100)|round|int }}% Funded</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ ((project.funds_raised / project.goal_amount) * 100)|round|int }}%"></div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <h2>Why Choose DeFy Research?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-lock"></i>
+                <h3>Secure & Transparent</h3>
+                <p>All transactions are recorded on the blockchain, ensuring complete transparency and security.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-globe"></i>
+                <h3>Global Reach</h3>
+                <p>Connect with researchers and funders from around the world without traditional barriers.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-bolt"></i>
+                <h3>Quick Funding</h3>
+                <p>Get funded faster with our streamlined process and direct crypto transfers.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-users"></i>
+                <h3>Community Driven</h3>
+                <p>Join a thriving community of researchers, innovators, and supporters.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <h2>How It Works</h2>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Create Your Project</h3>
+                <p>Share your research vision, set your funding goal, and tell your story.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Get Funded</h3>
+                <p>Receive ETH directly from supporters who believe in your research.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Make Progress</h3>
+                <p>Update your supporters as you achieve research milestones.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="final-cta">
+        <div class="cta-content">
+            <h2>Ready to Start Your Research Journey?</h2>
+            <p>Join the future of research funding today.</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('main.feed') }}" class="cta-button primary">
+                    <i class="fas fa-search"></i> Explore Projects
+                </a>
+                {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.login') }}" class="cta-button secondary">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.about') }}" class="cta-button outline">
+                    <i class="fas fa-info-circle"></i> Learn More
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate stats counting up
+    const stats = document.querySelectorAll('.stat-number');
+    stats.forEach(stat => {
+        const finalValue = parseInt(stat.textContent);
+        let currentValue = 0;
+        const duration = 2000; // 2 seconds
+        const increment = finalValue / (duration / 16); // 60fps
+
+        function updateValue() {
+            currentValue = Math.min(currentValue + increment, finalValue);
+            stat.textContent = Math.round(currentValue) + (stat.textContent.includes('Ξ') ? 'Ξ' : '');
+            
+            if (currentValue < finalValue) {
+                requestAnimationFrame(updateValue);
+            }
+        }
+
+        updateValue();
+    });
+
+    // Intersection Observer for fade-in animations
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('section').forEach(section => {
+        observer.observe(section);
+    });
+});
+</script>
+{% endblock %} 

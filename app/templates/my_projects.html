@@ -1,5 +1,33 @@
 {% extends "base.html" %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/project_status.css') }}">
+<style>
+html, body {
+    min-height: 100vh !important;
+    background: 
+        radial-gradient(circle at 0 0, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 100% 0, rgba(139, 92, 246, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 0 100%, rgba(139, 92, 246, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+        #000000 !important;
+    background-attachment: fixed !important;
+}
+
+body::before,
+body::after {
+    display: none !important;
+}
+
+.projects-container {
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="projects-container">
     <div class="projects-header">
@@ -7,16 +35,11 @@
         <a href="{{ url_for('main.create_project') }}" class="create-btn">+ New Project</a>
     </div>
 
-    <div class="projects-grid">
+    <div class="projects-grid" id="projects-grid">
         {% for project in projects %}
-        <div class="project-card" onclick="goToProject('{{ project.id }}', event)">
+        <div class="project-card {% if project.status == 'inactive' %}deactivated-theme{% endif %}" onclick="goToProject('{{ project.id }}', event)">
             <div class="project-header">
                 <h3>{{ project.title }}</h3>
-                <div class="project-actions">
-                    <a href="{{ url_for('main.edit_project', project_id=project.id) }}" class="edit-btn" onclick="event.stopPropagation()">
-                        Edit
-                    </a>
-                </div>
             </div>
             
             <div class="project-body">
@@ -63,15 +86,147 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if has_more %}
+    <div id="loading-spinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading more projects...</p>
+    </div>
+    {% endif %}
 </div>
 
+<style>
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
 <script>
+let currentPage = 1;
+let loading = false;
+let hasMore = {{ 'true' if has_more else 'false' }};
+
 function goToProject(projectId, event) {
-    // Don't navigate if clicking on buttons or links
-    if (event.target.closest('.edit-btn')) {
-        return;
-    }
     window.location.href = `/view-project/${projectId}`;
 }
+
+function createProjectCard(project) {
+    const fundingProgress = ((project.funds_raised || 0) / project.goal_amount * 100).toFixed(0);
+    return `
+        <div class="project-card ${project.status === 'inactive' ? 'deactivated-theme' : ''}" onclick="goToProject('${project.id}', event)">
+            <div class="project-header">
+                <h3>${project.title}</h3>
+            </div>
+            
+            <div class="project-body">
+                <p class="project-description">${project.description.substring(0, 200)}...</p>
+                
+                <div class="funding-progress">
+                    <div class="progress-stats">
+                        <span class="raised">${project.funds_raised || 0} ETH</span>
+                        <span class="goal">${project.goal_amount} ETH</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${fundingProgress}%"></div>
+                    </div>
+                    <div class="progress-percentage">
+                        ${fundingProgress}% funded
+                    </div>
+                </div>
+
+                <div class="project-meta">
+                    <div class="meta-item">
+                        <span class="label">Goal:</span>
+                        <span class="value">${project.goal_amount} ETH</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Team:</span>
+                        <span class="value">${(project.team_members || []).length} members</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Documents:</span>
+                        <span class="value">${(project.documents || []).length} files</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="project-footer">
+                <span class="project-date">Created: ${moment(project.created_at).fromNow()}</span>
+                <span class="project-status ${project.status}">${project.status.charAt(0).toUpperCase() + project.status.slice(1)}</span>
+            </div>
+        </div>
+    `;
+}
+
+async function loadMoreProjects() {
+    if (!hasMore || loading) return;
+    
+    loading = true;
+    const spinner = document.getElementById('loading-spinner');
+    spinner.style.display = 'block';
+    
+    try {
+        const response = await fetch(`/api/my-projects?page=${currentPage + 1}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Error loading projects:', data.error);
+            return;
+        }
+        
+        const projectsGrid = document.getElementById('projects-grid');
+        data.projects.forEach(project => {
+            projectsGrid.insertAdjacentHTML('beforeend', createProjectCard(project));
+        });
+        
+        currentPage++;
+        hasMore = data.has_more;
+        
+        if (!hasMore) {
+            spinner.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    } finally {
+        loading = false;
+        spinner.style.display = 'none';
+    }
+}
+
+// Infinite scroll implementation
+function handleScroll() {
+    const spinner = document.getElementById('loading-spinner');
+    if (!spinner) return;  // No more projects to load
+    
+    const rect = spinner.getBoundingClientRect();
+    const isVisible = rect.top <= window.innerHeight;
+    
+    if (isVisible) {
+        loadMoreProjects();
+    }
+}
+
+window.addEventListener('scroll', handleScroll);
+window.addEventListener('resize', handleScroll);
+
+// Initial check in case the page is not tall enough to scroll
+document.addEventListener('DOMContentLoaded', handleScroll);
 </script>
 {% endblock %} 

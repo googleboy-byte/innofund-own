@@ -1,92 +1,531 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="user-profile">
-        {% if user.photo_url %}
-            <img src="{{ user.photo_url }}" alt="Profile Photo" class="profile-photo">
-        {% endif %}
-        <h3>{{ user.display_name }}</h3>
-        
-        <div class="user-meta">
-            <span class="join-date">Member since {{ moment(user.created_at).format('MMMM YYYY') }}</span>
-            {% if user.wallet_address %}
-            <div class="wallet-info">
-                <span class="label">Wallet:</span>
-                <span class="wallet-address">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
-                {% if is_owner %}
-                <button onclick="copyWalletAddress('{{ user.wallet_address }}')" class="copy-btn">
-                    <i class="fas fa-copy"></i>
-                </button>
+<div class="profile-page-background"></div>
+<div class="user-profile-container">
+    <div class="user-profile-card">
+        <div class="user-profile-header">
+            {% if user.photo_url %}
+                <img src="{{ user.photo_url }}" alt="Profile Photo" class="user-profile-photo">
+            {% else %}
+                <div class="user-profile-photo-placeholder">
+                    <i class="fas fa-user"></i>
+                </div>
+            {% endif %}
+            <h2 class="user-profile-name">{{ user.display_name }}</h2>
+            
+            {% if user.bio %}
+            <p class="user-profile-bio">{{ user.bio }}</p>
+            {% endif %}
+        </div>
+
+        <div class="user-profile-content">
+            <div class="user-info-section">
+                <div class="user-info-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Member since {{ moment(user.created_at).format('MMMM YYYY') }}</span>
+                </div>
+                
+                {% if user.wallet_address %}
+                <div class="user-info-item user-wallet-info">
+                    <i class="fas fa-wallet"></i>
+                    <span class="user-wallet-address">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
+                    {% if is_owner %}
+                    <button onclick="copyWalletAddress('{{ user.wallet_address }}')" class="user-copy-btn">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if user.social_links %}
+            <div class="user-social-links">
+                {% if user.social_links.linkedin %}
+                <a href="{{ user.social_links.linkedin }}" target="_blank" class="user-social-link">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                {% endif %}
+                {% if user.social_links.github %}
+                <a href="{{ user.social_links.github }}" target="_blank" class="user-social-link">
+                    <i class="fab fa-github"></i>
+                </a>
+                {% endif %}
+                {% if user.social_links.twitter %}
+                <a href="{{ user.social_links.twitter }}" target="_blank" class="user-social-link">
+                    <i class="fab fa-twitter"></i>
+                </a>
                 {% endif %}
             </div>
             {% endif %}
-        </div>
-        
-        <div class="profile-share">
-            <button class="share-btn" onclick="copyProfileLink()">
-                Share Profile
+
+            <div class="user-profile-actions">
+                {% if is_owner %}
+                <button class="user-edit-profile-btn" onclick="showEditProfileModal()">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+                {% endif %}
+                <button class="user-share-profile-btn" onclick="copyProfileLink()">
+                    <i class="fas fa-share-alt"></i> Share Profile
+                </button>
+            </div>
+
+            {% if is_owner %}
+            <button onclick="window.location.href='{{ url_for('auth.logout') }}'" class="user-logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
             </button>
+            {% endif %}
         </div>
     </div>
-
-    {% if is_owner %}
-    <button class="auth-btn" onclick="window.location.href='{{ url_for('auth.logout') }}'">
-        Logout
-    </button>
-    {% endif %}
 </div>
 
-<div class="profile-actions">
-    {% if is_owner %}
-        <button class="edit-profile-btn">
-            <i class="fas fa-edit"></i> Edit Profile
-        </button>
-    {% endif %}
-    <button class="share-profile-btn" onclick="copyProfileLink()">
-        <i class="fas fa-share-alt"></i> Share Profile
-    </button>
+<div id="edit-profile-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Profile</h2>
+            <button onclick="closeEditProfileModal()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="edit-profile-form">
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" name="bio" class="form-control" rows="4" 
+                             placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Social Media Links</label>
+                    <div class="social-inputs">
+                        <div class="input-with-icon">
+                            <i class="fab fa-linkedin"></i>
+                            <input type="url" id="linkedin" name="linkedin" class="form-control" 
+                                   placeholder="LinkedIn URL" value="{{ user.social_links.linkedin if user.social_links else '' }}">
+                        </div>
+                        <div class="input-with-icon">
+                            <i class="fab fa-github"></i>
+                            <input type="url" id="github" name="github" class="form-control" 
+                                   placeholder="GitHub URL" value="{{ user.social_links.github if user.social_links else '' }}">
+                        </div>
+                        <div class="input-with-icon">
+                            <i class="fab fa-twitter"></i>
+                            <input type="url" id="twitter" name="twitter" class="form-control" 
+                                   placeholder="Twitter URL" value="{{ user.social_links.twitter if user.social_links else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="save-profile-btn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
+
+<style>
+.profile-page-background {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(to bottom right, rgb(17, 24, 39), rgba(88, 28, 135, 0.15)) !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+}
+
+.user-profile-container {
+    position: relative !important;
+    z-index: 1 !important;
+    margin-top: 6rem !important;
+    max-width: 36rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.user-profile-card {
+    position: relative !important;
+    z-index: 2 !important;
+    background: linear-gradient(145deg, rgba(26, 26, 26, 0.9), rgba(22, 22, 22, 0.95)) !important;
+    border-radius: 0.75rem !important;
+    padding: 2rem !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+}
+
+.user-profile-photo {
+    width: 6rem !important;
+    height: 6rem !important;
+    border-radius: 9999px !important;
+    margin: 0 auto 1rem auto !important;
+    object-fit: cover !important;
+}
+
+.user-profile-photo-placeholder {
+    width: 6rem !important;
+    height: 6rem !important;
+    border-radius: 9999px !important;
+    margin: 0 auto 1rem auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.875rem !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.user-profile-name {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    color: white !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.user-profile-bio {
+    color: rgb(156, 163, 175) !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 1rem !important;
+    font-size: 0.875rem !important;
+}
+
+.user-info-section {
+    color: rgb(156, 163, 175) !important;
+    font-size: 0.875rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.user-info-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.user-wallet-info {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.5rem !important;
+    display: inline-flex !important;
+}
+
+.user-copy-btn {
+    color: rgb(156, 163, 175) !important;
+    transition: all 0.2s !important;
+}
+
+.user-copy-btn:hover {
+    color: rgb(147, 51, 234) !important;
+}
+
+.user-social-links {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 1.5rem !important;
+    margin: 2rem 0 !important;
+}
+
+.user-social-link {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 1rem !important;
+    font-size: 1.5rem !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.2s !important;
+}
+
+.user-social-link:hover {
+    transform: translateY(-4px) !important;
+    background: linear-gradient(145deg, rgb(147, 51, 234), rgb(126, 34, 206)) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3) !important;
+}
+
+.user-profile-actions {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.user-edit-profile-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    background: linear-gradient(145deg, rgb(147, 51, 234), rgb(126, 34, 206)) !important;
+    color: white !important;
+    transition: all 0.2s !important;
+}
+
+.user-edit-profile-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3) !important;
+}
+
+.user-share-profile-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.2s !important;
+}
+
+.user-share-profile-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-2px) !important;
+}
+
+.user-logout-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    margin-top: 1.5rem !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    background-color: rgb(239, 68, 68) !important;
+    color: white !important;
+    transition: all 0.2s !important;
+}
+
+.user-logout-btn:hover {
+    opacity: 0.9 !important;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.85) !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.modal-content {
+    background: linear-gradient(145deg, rgba(26, 26, 26, 0.95), rgba(22, 22, 22, 0.98)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 1rem !important;
+    width: 90% !important;
+    max-width: 400px !important;
+    max-height: min(500px, 85vh) !important;
+    margin: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.modal-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 1rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: linear-gradient(to right, rgba(147, 51, 234, 0.1), rgba(126, 34, 206, 0.05)) !important;
+}
+
+.modal-header h2 {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 1.125rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+.close-btn {
+    color: rgba(255, 255, 255, 0.6) !important;
+    background: none !important;
+    border: none !important;
+    font-size: 1.25rem !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+    transition: all 0.2s !important;
+}
+
+.close-btn:hover {
+    color: rgb(147, 51, 234) !important;
+}
+
+.modal-body {
+    padding: 1.25rem !important;
+    overflow-y: auto !important;
+}
+
+.form-group {
+    margin-bottom: 1.25rem !important;
+}
+
+.form-group label {
+    display: block !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.form-control {
+    width: 100% !important;
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s !important;
+}
+
+.form-control:focus {
+    outline: none !important;
+    border-color: rgba(147, 51, 234, 0.5) !important;
+    background-color: rgba(147, 51, 234, 0.05) !important;
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.1) !important;
+}
+
+textarea.form-control {
+    min-height: 100px !important;
+    max-height: 200px !important;
+    resize: vertical !important;
+}
+
+.social-inputs {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+}
+
+.input-with-icon {
+    position: relative !important;
+}
+
+.input-with-icon i {
+    position: absolute !important;
+    left: 1rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-size: 1rem !important;
+    transition: color 0.2s !important;
+}
+
+.input-with-icon input {
+    padding-left: 2.75rem !important;
+}
+
+.input-with-icon input:focus + i {
+    color: rgb(147, 51, 234) !important;
+}
+
+.save-profile-btn {
+    width: 100% !important;
+    padding: 0.75rem !important;
+    margin-top: 1rem !important;
+    background: linear-gradient(145deg, rgb(147, 51, 234), rgb(126, 34, 206)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.save-profile-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3) !important;
+}
+</style>
 
 <script>
 function copyProfileLink() {
     const url = "{{ profile_url }}";
-    navigator.clipboard.writeText(url).then(() => {
-        const btn = document.querySelector('.share-btn');
-        const originalText = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 2000);
-    });
+    copyToClipboard(url);
 }
 
 function copyWalletAddress(address) {
-    navigator.clipboard.writeText(address).then(() => {
-        showToast('Wallet address copied to clipboard!');
-    });
+    copyToClipboard(address);
+}
+
+function showEditProfileModal() {
+    const modal = document.getElementById('edit-profile-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEditProfileModal() {
+    const modal = document.getElementById('edit-profile-modal');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+document.getElementById('edit-profile-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        bio: document.getElementById('bio').value,
+        social_links: {
+            linkedin: document.getElementById('linkedin').value,
+            github: document.getElementById('github').value,
+            twitter: document.getElementById('twitter').value
+        }
+    };
+
+    try {
+        const response = await fetch('/update-profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            showToast(data.error || 'Failed to update profile', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showToast('An error occurred while updating the profile', 'error');
+    }
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('edit-profile-modal');
+    if (event.target == modal) {
+        closeEditProfileModal();
+    }
 }
 </script>
-
-<style>
-.user-meta {
-    @apply flex flex-col items-center gap-2 mt-2 text-sm text-text-secondary;
-}
-
-.join-date {
-    @apply text-center;
-}
-
-.wallet-info {
-    @apply flex items-center gap-2;
-}
-
-.wallet-address {
-    @apply font-mono bg-dark-bg px-2 py-1 rounded;
-}
-
-.copy-btn {
-    @apply text-text-secondary hover:text-neon-green transition-colors;
-}
-</style>
 {% endblock %} 

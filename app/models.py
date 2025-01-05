@@ -1,4 +1,7 @@
 from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
 
 class User(UserMixin):
     def __init__(self, user_data):
@@ -28,3 +31,28 @@ class User(UserMixin):
     @property
     def has_wallet(self):
         return bool(self.wallet_address) 
+
+class TestResult(db.Model):
+    """Model for storing automated test results"""
+    __tablename__ = 'test_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    duration = db.Column(db.Float, nullable=False)  # Test duration in seconds
+    success = db.Column(db.Boolean, nullable=False)
+    total_tests = db.Column(db.Integer, nullable=False)
+    failures = db.Column(db.Integer, nullable=False)
+    errors = db.Column(db.Integer, nullable=False)
+    output = db.Column(db.Text, nullable=True)  # Full test output
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.isoformat(),
+            'duration': self.duration,
+            'success': self.success,
+            'total_tests': self.total_tests,
+            'failures': self.failures,
+            'errors': self.errors,
+            'output': self.output
+        } 
