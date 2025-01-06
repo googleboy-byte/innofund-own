@@ -8,10 +8,10 @@
     </div>
 
     <div class="oauth-buttons">
-        <button class="oauth-btn google" onclick="window.location.href='{{ url_for('auth.google_login', next=next) }}'">
+        <!-- <button class="oauth-btn google" onclick="window.location.href='{{ url_for('auth.google_login', next=next) }}'">
             <img src="{{ url_for('static', filename='images/google.svg') }}" alt="Google">
             <span>Continue with Google</span>
-        </button>
+        </button> -->
         
         <button class="oauth-btn github" onclick="signInWithGithub('{{ next }}')">
             <img src="{{ url_for('static', filename='images/github.svg') }}" alt="GitHub">
