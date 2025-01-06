@@ -684,6 +684,21 @@ def view_project(project_id):
             
         project['id'] = project_id
         
+        # Ensure poll data is properly structured
+        if 'poll' in project and project['poll']:
+            poll = project['poll']
+            # Ensure each option has votes and voters
+            for option in poll.get('options', []):
+                if 'votes' not in option:
+                    option['votes'] = 0
+                if 'voters' not in option:
+                    option['voters'] = []
+            # Ensure total_votes exists
+            if 'total_votes' not in poll:
+                poll['total_votes'] = sum(option.get('votes', 0) for option in poll.get('options', []))
+        else:
+            project['poll'] = None
+        
         # Store browsing history if user is logged in
         if current_user.is_authenticated:
             try:
@@ -1125,3 +1140,144 @@ def update_profile():
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Failed to update profile'}), 500
+
+@main.route('/api/create_poll/<project_id>', methods=['POST'])
+@login_required
+def create_poll(project_id):
+    try:
+        # Get project from RTDB
+        rtdb_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = rtdb_ref.get()
+        
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+            
+        # Check if user is project owner
+        if project.get('created_by') != current_user.id:
+            return jsonify({'error': 'Only project owner can create polls'}), 403
+            
+        # Get poll data from request
+        data = request.get_json()
+        question = data.get('question')
+        options = data.get('options', [])
+        
+        # Validate poll data
+        if not question or not options:
+            return jsonify({'error': 'Question and options are required'}), 400
+            
+        if len(options) < 2 or len(options) > 5:
+            return jsonify({'error': 'Poll must have between 2 and 5 options'}), 400
+            
+        # Create poll object
+        poll = {
+            'question': question,
+            'options': [{'id': str(i), 'text': opt, 'votes': 0, 'voters': []} for i, opt in enumerate(options)],
+            'total_votes': 0,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Update project with new poll
+        rtdb_ref.update({
+            'poll': poll
+        })
+        
+        return jsonify({'message': 'Poll created successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error creating poll: {str(e)}")
+        return jsonify({'error': 'Failed to create poll'}), 500
+
+@main.route('/api/vote_poll/<project_id>/<option_id>', methods=['POST'])
+@login_required
+def vote_poll(project_id, option_id):
+    try:
+        # Get project from RTDB
+        rtdb_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = rtdb_ref.get()
+        
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+            
+        poll = project.get('poll')
+        if not poll:
+            return jsonify({'error': 'No active poll found'}), 404
+            
+        # Find the option
+        option_found = False
+        user_previous_vote = None
+        target_option = None
+        
+        # Ensure all options have a voters list
+        for option in poll['options']:
+            if 'voters' not in option:
+                option['voters'] = []
+            
+            # Check if user already voted for this option
+            if current_user.id in option['voters']:
+                if option['id'] == option_id:
+                    return jsonify({'error': 'Already voted for this option'}), 400
+                else:
+                    user_previous_vote = option
+                    
+            if option['id'] == option_id:
+                option_found = True
+                target_option = option
+                
+        if not option_found:
+            return jsonify({'error': 'Invalid option'}), 400
+            
+        # Remove previous vote if exists
+        if user_previous_vote:
+            user_previous_vote['votes'] = max(0, user_previous_vote['votes'] - 1)
+            user_previous_vote['voters'].remove(current_user.id)
+            poll['total_votes'] = max(0, poll['total_votes'] - 1)
+            
+        # Add new vote
+        if 'votes' not in target_option:
+            target_option['votes'] = 0
+        target_option['votes'] += 1
+        target_option['voters'].append(current_user.id)
+        if 'total_votes' not in poll:
+            poll['total_votes'] = 0
+        poll['total_votes'] += 1
+        
+        # Update project with updated poll
+        rtdb_ref.update({
+            'poll': poll
+        })
+        
+        return jsonify({'message': 'Vote recorded successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error voting on poll: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to record vote'}), 500
+
+@main.route('/api/delete_poll/<project_id>', methods=['POST'])
+@login_required
+def delete_poll(project_id):
+    try:
+        # Get project from RTDB
+        rtdb_ref = rtdb.reference(f'projects/{project_id}', app=get_app('rtdb'))
+        project = rtdb_ref.get()
+        
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+            
+        # Check if user is project owner
+        if project.get('created_by') != current_user.id:
+            return jsonify({'error': 'Only project owner can delete polls'}), 403
+            
+        # Delete the poll by setting it to None
+        rtdb_ref.update({
+            'poll': None
+        })
+        
+        return jsonify({'message': 'Poll deleted successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error deleting poll: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to delete poll'}), 500

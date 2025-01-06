@@ -4,54 +4,6 @@
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/view_project.css') }}">
 <style>
-/* Toast Notifications */
-.toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 1rem;
-    border-radius: 8px;
-    background: var(--dark-bg, #1a1a1a);
-    color: var(--text-primary, #ffffff);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    transform: translateY(100px);
-    opacity: 0;
-    transition: all 0.3s ease;
-    z-index: 1100;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.toast.success {
-    border-left: 4px solid #4CAF50;
-}
-
-.toast.error {
-    border-left: 4px solid #f44336;
-}
-
-.toast.show {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-.toast-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.toast-close {
-    background: none;
-    border: none;
-    color: var(--text-secondary, #718096);
-    cursor: pointer;
-    padding: 0.25rem;
-    margin-left: auto;
-}
-
 /* Modal Styles */
 .modal {
     display: none;
@@ -138,6 +90,7 @@
     background: rgba(255, 255, 255, 0.03);
 }
 
+/* Form Styles */
 .form-group {
     margin-bottom: 1.25rem;
 }
@@ -166,175 +119,317 @@
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
-select.form-control {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23ffffff' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 1rem center;
-    padding-right: 2.5rem;
+/* Poll Styles */
+.poll-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 2rem 0;
 }
 
-select.form-control option {
-    background-color: var(--dark-bg, #1a1a1a);
-    color: var(--text-primary, #ffffff);
-    padding: 0.5rem;
-}
-
-textarea.form-control {
-    min-height: 80px;
-    resize: vertical;
-}
-
-/* Donate Button Styles */
-.donate-btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    background-color: #4CAF50;
-    color: #000000;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.95rem;
-    display: inline-flex;
+.poll-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
-.donate-btn:hover {
-    background-color: #45a049;
-}
-
-/* Report Button Styles */
-.report-submit-btn {
-    padding: 0.75rem 1.5rem;
-    border: 1px solid rgba(255, 0, 60, 0.3);
-    border-radius: 8px;
-    background-color: rgba(255, 0, 60, 0.1);
-    color: #ff003c;
+.poll-title {
+    font-size: 1.25rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.95rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
-}
-
-.report-submit-btn:hover {
-    background-color: rgba(255, 0, 60, 0.2);
-    border-color: rgba(255, 0, 60, 0.4);
-}
-
-/* Report Modal and Button Styles */
-#report-modal .modal-content {
-    border: 1px solid rgba(255, 0, 60, 0.3);
-    box-shadow: 0 0 20px rgba(255, 0, 60, 0.15);
-}
-
-/* Donate Modal Styles */
-#donate-modal .modal-content {
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.15);
-}
-
-#donate-modal .donate-btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    background-color: #4CAF50;
-    color: #000000;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.95rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-#donate-modal .donate-btn:hover {
-    background-color: #45a049;
-}
-
-/* Team Member Styles */
-.team-member {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.team-member-hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Deactivation Modal Specific Styles */
-#deactivate-modal .modal-content {
-    border: 1px solid rgba(255, 59, 48, 0.3);
-    box-shadow: 0 0 20px rgba(255, 59, 48, 0.15);
-}
-
-.deactivate-warning {
     color: var(--text-primary);
-    font-weight: 600;
-    margin: 1rem 0 0.5rem;
-}
-
-.deactivate-consequences {
-    list-style: none;
-    padding: 0;
     margin: 0;
 }
 
-.deactivate-consequences li {
-    color: var(--text-secondary, #718096);
-    padding: 0.5rem 0;
-    padding-left: 1.5rem;
-    position: relative;
+.poll-actions {
+    display: flex;
+    gap: 0.75rem;
 }
 
-.deactivate-consequences li::before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    color: rgba(255, 59, 48, 0.7);
-}
-
-.deactivate-confirm-btn {
+.create-poll-btn {
     padding: 0.75rem 1.5rem;
-    border: 1px solid rgba(255, 59, 48, 0.3);
+    border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 8px;
-    background-color: rgba(255, 59, 48, 0.1);
-    color: rgb(255, 59, 48);
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 0.95rem;
+}
+
+.create-poll-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.delete-poll-btn {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-poll-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+.poll-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.poll-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.poll-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.poll-option.voted {
+    border-color: #818cf8;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.poll-option-text {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.poll-progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.poll-progress-bar {
+    height: 100%;
+    background: #818cf8;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.poll-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.poll-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.poll-preview h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.poll-preview-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.poll-preview-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+.poll-preview-option .vote-count {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.btn-danger {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.deactivate-confirm-btn:hover {
-    background-color: rgba(255, 59, 48, 0.2);
-    border-color: rgba(255, 59, 48, 0.4);
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
 }
 
-.btn-secondary {
-    padding: 0.75rem 1.5rem;
+.btn-danger i {
+    font-size: 0.875rem;
+}
+
+.login-to-vote {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.login-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.login-message i {
+    color: #818cf8;
+    font-size: 1rem;
+}
+
+.login-btn {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+.login-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+.login-btn i {
+    font-size: 0.875rem;
+}
+
+/* Modal Button Styles */
+.modal-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-btn-primary {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #818cf8;
+}
+
+.modal-btn-primary:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.modal-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.modal-btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.modal-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+.modal-btn i {
+    font-size: 0.875rem;
+}
+
+.add-option-btn {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.add-option-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.add-option-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.add-option-btn i {
+    font-size: 0.875rem;
 }
 </style>
 {% endblock %}
@@ -495,6 +590,71 @@ textarea.form-control {
                 </div>
             </div>
             {% endif %}
+
+            <!-- Poll Section -->
+            <div class="poll-section">
+                <div class="poll-header">
+                    <h3 class="poll-title">Project Poll</h3>
+                    {% if project.created_by == current_user.id %}
+                    <div class="poll-actions">
+                        <button class="create-poll-btn" onclick="openCreatePollModal()">
+                            <i class="fas fa-poll"></i> Create Poll
+                        </button>
+                        {% if project.poll %}
+                        <button class="delete-poll-btn" onclick="openDeletePollModal()">
+                            <i class="fas fa-trash"></i> Delete Poll
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if project.poll %}
+                <div class="poll-options">
+                    <h4>{{ project.poll.question }}</h4>
+                    {% if current_user.is_authenticated %}
+                        {% for option in project.poll.options %}
+                        <div class="poll-option {% if current_user.id in option.voters %}voted{% endif %}" 
+                             onclick="votePoll('{{ option.id }}')">
+                            <div class="poll-option-text">{{ option.text }}</div>
+                            <div class="poll-progress">
+                                <div class="poll-progress-bar" style="width: {{ (option.votes / project.poll.total_votes * 100) if project.poll.total_votes > 0 else 0 }}%"></div>
+                            </div>
+                            <div class="poll-stats">
+                                <span>{{ option.votes }} votes</span>
+                                <span>{{ "%.1f"|format((option.votes / project.poll.total_votes * 100) if project.poll.total_votes > 0 else 0) }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        {% for option in project.poll.options %}
+                        <div class="poll-option">
+                            <div class="poll-option-text">{{ option.text }}</div>
+                            <div class="poll-progress">
+                                <div class="poll-progress-bar" style="width: {{ (option.votes / project.poll.total_votes * 100) if project.poll.total_votes > 0 else 0 }}%"></div>
+                            </div>
+                            <div class="poll-stats">
+                                <span>{{ option.votes }} votes</span>
+                                <span>{{ "%.1f"|format((option.votes / project.poll.total_votes * 100) if project.poll.total_votes > 0 else 0) }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <div class="login-to-vote">
+                            <div class="login-message">
+                                <i class="fas fa-lock"></i>
+                                <span>Sign in to participate in this poll</span>
+                            </div>
+                            <a href="{{ url_for('auth.login') }}" class="login-btn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Login to Vote
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-center text-muted">No active poll</p>
+                {% endif %}
+            </div>
         </div>
 
         <div class="project-sidebar">
@@ -560,7 +720,8 @@ textarea.form-control {
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" onclick="submitDonation(event)" class="donate-btn">
+            <button type="button" class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="button" onclick="submitDonation(event)" class="modal-btn modal-btn-primary">
                 <i class="fas fa-hand-holding-usd"></i>Donate
             </button>
         </div>
@@ -592,9 +753,10 @@ textarea.form-control {
                 </div>
                 </div>
         <div class="modal-footer">
-            <button type="button" onclick="submitReport()" class="report-submit-btn">
-                        Submit Report
-                    </button>
+            <button type="button" class="modal-btn modal-btn-secondary" onclick="closeReportModal()">Cancel</button>
+            <button type="button" onclick="submitReport()" class="modal-btn modal-btn-primary">
+                <i class="fas fa-flag"></i>Submit Report
+            </button>
         </div>
     </div>
 </div>
@@ -616,9 +778,78 @@ textarea.form-control {
             </ul>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeDeactivateModal()">Cancel</button>
-            <button class="deactivate-confirm-btn" onclick="confirmDeactivation()">
+            <button class="modal-btn modal-btn-secondary" onclick="closeDeactivateModal()">Cancel</button>
+            <button class="modal-btn modal-btn-danger" onclick="confirmDeactivation()">
                 <i class="fas fa-power-off"></i>Deactivate Project
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Poll Modal -->
+<div id="createPollModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Create Poll</h2>
+            <button type="button" class="close" onclick="closeCreatePollModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createPollForm" onsubmit="submitPoll(event)">
+                <div class="form-group">
+                    <label for="pollQuestion">Question</label>
+                    <input type="text" class="form-control" id="pollQuestion" required
+                           placeholder="Enter your poll question">
+                </div>
+                <div id="pollOptions">
+                    <div class="form-group">
+                        <label>Options</label>
+                        <input type="text" class="form-control poll-option-input" required
+                               placeholder="Option 1">
+                        <input type="text" class="form-control poll-option-input mt-2" required
+                               placeholder="Option 2">
+                    </div>
+                </div>
+                <button type="button" class="add-option-btn" onclick="addPollOption()" id="addOptionBtn">
+                    <i class="fas fa-plus"></i>Add Option
+                </button>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-secondary" onclick="closeCreatePollModal()">Cancel</button>
+            <button type="submit" form="createPollForm" class="modal-btn modal-btn-primary">
+                <i class="fas fa-poll"></i>Create Poll
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Poll Confirmation Modal -->
+<div id="deletePollModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Delete Poll</h2>
+            <button type="button" class="close" onclick="closeDeletePollModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this poll? This action cannot be undone.</p>
+            {% if project.poll %}
+            <div class="poll-preview">
+                <h4>{{ project.poll.question }}</h4>
+                <div class="poll-preview-options">
+                    {% for option in project.poll.options %}
+                    <div class="poll-preview-option">
+                        <span>{{ option.text }}</span>
+                        <span class="vote-count">{{ option.votes }} votes</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-secondary" onclick="closeDeletePollModal()">Cancel</button>
+            <button type="button" class="modal-btn modal-btn-danger" onclick="confirmDeletePoll()">
+                <i class="fas fa-trash"></i>Delete Poll
             </button>
         </div>
     </div>
@@ -922,6 +1153,185 @@ function confirmDeactivation() {
 
 // Close modal when clicking outside
 window.onclick = function(event) {
+    const deactivateModal = document.getElementById('deactivate-modal');
+    if (event.target === deactivateModal) {
+        closeDeactivateModal();
+    }
+}
+
+// Get project ID from the URL
+const projectId = window.location.pathname.split('/').pop();
+
+// Poll Functions
+function openCreatePollModal() {
+    document.getElementById('createPollModal').style.display = 'block';
+}
+
+function closeCreatePollModal() {
+    document.getElementById('createPollModal').style.display = 'none';
+    document.getElementById('createPollForm').reset();
+    // Reset options to initial two
+    const pollOptions = document.getElementById('pollOptions');
+    const optionInputs = pollOptions.getElementsByClassName('poll-option-input');
+    while (optionInputs.length > 2) {
+        optionInputs[optionInputs.length - 1].remove();
+    }
+}
+
+async function deletePoll() {
+    if (!confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/delete_poll/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Poll deleted successfully', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Failed to delete poll', 'error');
+        }
+    } catch (error) {
+        showToast('Error deleting poll', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function addPollOption() {
+    const pollOptions = document.getElementById('pollOptions');
+    const optionInputs = pollOptions.getElementsByClassName('poll-option-input');
+    
+    if (optionInputs.length >= 5) {
+        showToast('Maximum 5 options allowed', 'error');
+        return;
+    }
+    
+    const newInput = document.createElement('input');
+    newInput.type = 'text';
+    newInput.className = 'form-control poll-option-input mt-2';
+    newInput.required = true;
+    newInput.placeholder = `Option ${optionInputs.length + 1}`;
+    
+    pollOptions.firstElementChild.appendChild(newInput);
+    
+    // Disable add button if max reached
+    if (optionInputs.length >= 4) {
+        document.getElementById('addOptionBtn').disabled = true;
+    }
+}
+
+async function submitPoll(event) {
+    event.preventDefault();
+    
+    const question = document.getElementById('pollQuestion').value;
+    const optionInputs = document.getElementsByClassName('poll-option-input');
+    const options = Array.from(optionInputs).map(input => input.value).filter(val => val.trim());
+    
+    if (options.length < 2) {
+        showToast('Please provide at least 2 options', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/create_poll/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question,
+                options
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Poll created successfully', 'success');
+            closeCreatePollModal();
+            location.reload();
+        } else {
+            showToast(data.error || 'Failed to create poll', 'error');
+        }
+    } catch (error) {
+        showToast('Error creating poll', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function votePoll(optionId) {
+    try {
+        const response = await fetch(`/api/vote_poll/${projectId}/${optionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Vote recorded successfully', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Failed to record vote', 'error');
+        }
+    } catch (error) {
+        showToast('Error recording vote', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function openDeletePollModal() {
+    document.getElementById('deletePollModal').style.display = 'block';
+}
+
+function closeDeletePollModal() {
+    document.getElementById('deletePollModal').style.display = 'none';
+}
+
+async function confirmDeletePoll() {
+    try {
+        const response = await fetch(`/api/delete_poll/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Poll deleted successfully', 'success');
+            closeDeletePollModal();
+            location.reload();
+        } else {
+            showToast(data.error || 'Failed to delete poll', 'error');
+        }
+    } catch (error) {
+        showToast('Error deleting poll', 'error');
+        console.error('Error:', error);
+    }
+}
+
+// Update the onclick handler in the delete button
+document.querySelector('.delete-poll-btn').onclick = openDeletePollModal;
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const deletePollModal = document.getElementById('deletePollModal');
+    if (event.target === deletePollModal) {
+        closeDeletePollModal();
+    }
+    // Keep other modal close handlers
     const deactivateModal = document.getElementById('deactivate-modal');
     if (event.target === deactivateModal) {
         closeDeactivateModal();
