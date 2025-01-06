@@ -12,6 +12,7 @@ InnoFund is a modern web application that connects researchers with potential fu
 - Receive direct funding through cryptocurrency
 - Track transaction history
 - Manage project status (active/inactive)
+- Create and manage project polls to gather community feedback
 
 ### For Funders
 - Browse active research projects
@@ -20,6 +21,16 @@ InnoFund is a modern web application that connects researchers with potential fu
 - Track contribution history
 - Interact with project creators
 - Vote on projects (upvote/downvote)
+- Participate in project polls
+
+### Project Polling System
+- Project owners can create polls with 2-5 options
+- Only one active poll per project at a time
+- Authenticated users can vote on polls
+- Real-time vote tracking and percentage display
+- Poll results visible to all users
+- Project owners can delete polls
+- Secure voting system preventing duplicate votes
 
 ### General Features
 - User authentication with OAuth
