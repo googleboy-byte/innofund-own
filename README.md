@@ -168,10 +168,6 @@ innofund/
 5. Push to the branch (`git push origin feature/improvement`)
 6. Create a Pull Request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Acknowledgments
 
 - [Flask](https://flask.palletsprojects.com/)
@@ -179,7 +175,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Web3.js](https://web3js.readthedocs.io/)
 - [Font Awesome](https://fontawesome.com/)
 - [Inter Font](https://fonts.google.com/specimen/Inter)
-
-## Contact
-
-For any inquiries or support, please contact us at support@innofund.com 
