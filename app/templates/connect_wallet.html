@@ -1,64 +1,133 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="wallet-container">
-    <div class="wallet-header">
-        <h2>Connect Your Wallet</h2>
-        <p class="wallet-subtitle">Connect your Web3 wallet to continue using InnoFund</p>
-    </div>
-
-    <div class="wallet-options">
-        <button class="wallet-btn metamask" onclick="connectMetaMask()">
-            <div class="wallet-btn-content">
-                <img src="{{ url_for('static', filename='images/metamask.svg') }}" alt="MetaMask">
-                <span>Connect with MetaMask</span>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h2 class="card-title mb-4">Connect Your Wallet</h2>
+                    
+                    {% if is_connected %}
+                    <div class="connected-wallet">
+                        <p class="text-success mb-3">
+                            <i class="fas fa-check-circle"></i>
+                            Wallet Connected
+                        </p>
+                        <p class="wallet-address mb-4">{{ wallet_address }}</p>
+                        <button class="btn btn-danger" onclick="disconnectWallet()">
+                            <i class="fas fa-unlink"></i>
+                            Disconnect Wallet
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="connect-options">
+                        <p class="text-muted mb-4">Connect your Ethereum wallet to start funding projects</p>
+                        <button class="btn btn-primary btn-lg" onclick="connectMetaMask()">
+                            <i class="fas fa-wallet"></i>
+                            Connect MetaMask
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <i class="fas fa-chevron-right"></i>
-        </button>
-        
-        <button class="wallet-btn walletconnect" onclick="connectWalletConnect()">
-            <div class="wallet-btn-content">
-                <img src="{{ url_for('static', filename='images/walletconnect.svg') }}" alt="WalletConnect">
-                <span>Connect with WalletConnect</span>
-            </div>
-            <i class="fas fa-chevron-right"></i>
-        </button>
+        </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
 <script>
 async function connectMetaMask() {
-    if (typeof window.ethereum !== 'undefined') {
-        try {
-            // Request account access
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            const address = accounts[0];
-            
-            // Save wallet address
-            const response = await fetch('/save-wallet', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ wallet_address: address })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                window.location.href = "{{ url_for('main.dashboard') }}";
-            } else {
-                alert('Failed to save wallet address');
-            }
-        } catch (error) {
-            console.error(error);
-            alert('Failed to connect wallet');
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            alert('Please install MetaMask to connect your wallet');
+            return;
         }
-    } else {
-        window.open('https://metamask.io/download.html', '_blank');
+
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+        });
+        
+        if (accounts.length === 0) {
+            alert('No accounts found. Please check MetaMask.');
+            return;
+        }
+
+        const response = await fetch('/api/connect-wallet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                wallet_address: accounts[0]
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to connect wallet: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to connect wallet. Please try again.');
     }
 }
 
-// Add WalletConnect implementation here
+async function disconnectWallet() {
+    if (!confirm('Are you sure you want to disconnect your wallet?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/disconnect-wallet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to disconnect wallet: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to disconnect wallet. Please try again.');
+    }
+}
 </script>
-{% endblock %} 
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.connected-wallet {
+    padding: 1rem;
+}
+
+.wallet-address {
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-family: monospace;
+    word-break: break-all;
+}
+
+.connect-options {
+    padding: 2rem 1rem;
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+}
+
+.fas {
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}

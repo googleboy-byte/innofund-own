@@ -1,107 +1,91 @@
-from flask import Flask, request, render_template, session
-from config import Config
-import firebase_admin
-from firebase_admin import credentials, firestore, storage, db
-from firebase_admin import auth as firebase_auth
-import os
-from flask_login import LoginManager, current_user
+from flask import Flask
+from flask_login import LoginManager
 from flask_moment import Moment
+from firebase_admin import credentials, initialize_app, firestore, storage, db as rtdb
+import os
+from dotenv import load_dotenv
 import logging
+from .utils.warning_filters import setup_warning_filters
 
+# Set up warning filters at app startup
+setup_warning_filters()
+
+# Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
-login_manager.login_message = 'Please log in to access this page.'
-
-# Initialize Firebase apps at module level
-default_app = None
-storage_app = None
-rtdb_app = None
-db = None
-moment = Moment()
-
-def init_firebase(app):
-    """Initialize Firebase apps and return the Firestore client"""
-    global default_app, storage_app, rtdb_app
-    
+# Initialize Firebase Admin SDK
+try:
+    # Clean up existing apps
     logger.debug("Initializing Firebase apps...")
-    
     try:
-        # First, delete any existing apps
-        for app_name in firebase_admin._apps:
-            firebase_admin.delete_app(firebase_admin.get_app(app_name))
+        import firebase_admin
+        for app in firebase_admin._apps.values():
+            firebase_admin.delete_app(app)
         logger.debug("Cleaned up existing Firebase apps")
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"No existing apps to clean up: {str(e)}")
 
-    # Initialize main Firebase app (for auth)
-    cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                            app.config['FIREBASE_CREDENTIALS'])
-    logger.debug(f"Main Firebase credentials path: {cred_path}")
-    default_app = firebase_admin.initialize_app(credentials.Certificate(cred_path), {
-        'databaseURL': app.config['FIREBASE_DATABASE_URL']
+    # Initialize main Firebase app
+    main_cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                                'firebase', 'innofund-firebase-admin.json')
+    logger.debug(f"Main Firebase credentials path: {main_cred_path}")
+    
+    default_app = initialize_app(credentials.Certificate(main_cred_path), {
+        'databaseURL': os.getenv('FIREBASE_DATABASE_URL', 'https://innofund-own-default-rtdb.asia-southeast1.firebasedatabase.app')
     })
     logger.debug("Main Firebase app initialized")
-    
-    # Initialize Firestore client first
-    firestore_client = firestore.client()
-    logger.debug("Firestore client initialized")
-    
-    # Then initialize other apps
+
+    # Initialize Storage app
     storage_cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                    app.config['STORAGE_FIREBASE_CREDENTIALS'])
+                                   'firebase', 'innofund-storage-firebase-admin.json')
     logger.debug(f"Storage Firebase credentials path: {storage_cred_path}")
-    storage_app = firebase_admin.initialize_app(credentials.Certificate(storage_cred_path), {
-        'storageBucket': app.config['STORAGE_BUCKET']
+    storage_app = initialize_app(credentials.Certificate(storage_cred_path), {
+        'storageBucket': os.getenv('STORAGE_BUCKET', 'innofund-own.appspot.com')
     }, name='storage')
     logger.debug("Storage Firebase app initialized")
-    
+
+    # Initialize RTDB app
     rtdb_cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                 app.config['RTDB_FIREBASE_CREDENTIALS'])
+                                'firebase', 'innofund-rtdb-firebase-admin.json')
     logger.debug(f"RTDB Firebase credentials path: {rtdb_cred_path}")
-    rtdb_app = firebase_admin.initialize_app(credentials.Certificate(rtdb_cred_path), {
-        'databaseURL': app.config['RTDB_DATABASE_URL']
+    rtdb_app = initialize_app(credentials.Certificate(rtdb_cred_path), {
+        'databaseURL': os.getenv('RTDB_DATABASE_URL', 'https://innofund-own-rtdb-default-rtdb.asia-southeast1.firebasedatabase.app')
     }, name='rtdb')
     logger.debug("RTDB Firebase app initialized")
-    
-    return firestore_client
+
+except Exception as e:
+    logger.error(f"Error initializing Firebase: {str(e)}")
+    import traceback
+    logger.error(traceback.format_exc())
+    raise
+
+load_dotenv()
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+
+# Initialize Flask-Moment
+moment = Moment()
 
 def create_app():
     try:
         app = Flask(__name__)
-        app.config.from_object(Config)
+        app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
         
-        # Initialize Firebase and get Firestore client
-        global db
-        db = init_firebase(app)
-        
-        @app.errorhandler(404)
-        def not_found_error(error):
-            print(f"404 Error: {request.url}")
-            return render_template('404.html'), 404
-        
-        # Initialize Flask-Login
+        # Initialize extensions
         login_manager.init_app(app)
-        login_manager.session_protection = 'strong'
-        login_manager.refresh_view = 'auth.login'
-        login_manager.needs_refresh_message = 'Please login again to confirm your identity.'
-        
-        @app.before_request
-        def before_request():
-            if current_user.is_authenticated:
-                session.permanent = True
-        
-        # Initialize Flask-Moment
         moment.init_app(app)
+        login_manager.login_view = 'auth.login'
         
         # Register blueprints
         from app import routes
         from app.auth import auth_bp
+        from app.blockchain_routes import blockchain_bp
         
         app.register_blueprint(routes.main)
         app.register_blueprint(auth_bp)
+        app.register_blueprint(blockchain_bp, url_prefix='/blockchain')
         
         return app
         
@@ -115,27 +99,25 @@ def create_app():
 def load_user(user_id):
     try:
         logger.debug(f"Loading user: {user_id}")
-        user = firebase_auth.get_user(user_id)
-        if not db:
-            logger.warning("Warning: Firestore client not initialized")
-            return None
-            
-        user_doc = db.collection('users').document(user_id).get()
-        user_data = user_doc.to_dict() if user_doc.exists else {}
+        from app.models import User
+        from firebase_admin import auth
         
-        user_obj = User({
-            'uid': user.uid,
-            'email': user.email,
-            'display_name': user.display_name,
-            'photo_url': user.photo_url,
-            **user_data
-        })
-        logger.debug(f"Loaded user object: {user_obj.__dict__}")
-        return user_obj
+        user = auth.get_user(user_id)
+        db = firestore.client()
+        user_doc = db.collection('users').document(user_id).get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            return User(
+                uid=user.uid,
+                email=user.email,
+                display_name=user_data.get('display_name', user.display_name),
+                photo_url=user_data.get('photo_url', user.photo_url)
+            )
+        return None
+        
     except Exception as e:
         logger.error(f"Error loading user: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return None
-
-from app.models import User 

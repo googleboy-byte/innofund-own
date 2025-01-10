@@ -556,7 +556,7 @@
                     </div>
                     <div class="meta-item">
                         <span class="label">Team Members</span>
-                        <span class="value">{{ project.team_members|length }}</span>
+                        <span class="value">{{ team_members|length }}</span>
                     </div>
                 </div>
             </div>
@@ -661,7 +661,7 @@
             <div class="team-section">
                 <h3>Project Team</h3>
                 <div class="team-list">
-                    {% for member in project.team_members %}
+                    {% for member in team_members %}
                     <div class="team-member" data-member-id="{{ member.id }}">
                         <div class="member-avatar">
                             {% if member.photo_url %}
@@ -672,7 +672,7 @@
                         </div>
                         <div class="member-info">
                             <div class="member-name">{{ member.name }}</div>
-                            <div class="member-title">{{ member.title }}</div>
+                            <div class="member-title">{{ member.role }}</div>
                         </div>
                     </div>
                     {% endfor %}
@@ -1038,7 +1038,9 @@ function deactivateProject(projectId) {
     .then(data => {
         if (data.success) {
             showToast('Project deactivated successfully', 'success');
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
             throw new Error(data.error || 'Failed to deactivate project');
         }

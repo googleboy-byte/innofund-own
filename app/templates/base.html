@@ -10,6 +10,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     {% endblock %}
     {{ moment.include_moment() }}
+    
+    <!-- Web3 Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js" type="application/javascript"></script>
+    <script type="module" src="{{ url_for('static', filename='js/web3Service.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/web3Integration.js') }}"></script>
+    <!-- Add in the head section -->
+    <script>
+        const NETWORK_CONFIG = {
+            chainId: '0xa869',
+            networkName: 'Avalanche Fuji Testnet'
+        };
+    </script>
 </head>
 <body>
     {% block navbar %}
@@ -66,4 +78,4 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% endblock %}
 </body>
-</html> 
+</html>

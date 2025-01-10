@@ -4,33 +4,38 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class User(UserMixin):
-    def __init__(self, user_data):
-        self.id = user_data.get('uid')
-        self.email = user_data.get('email')
-        self.display_name = user_data.get('display_name')
-        self.photo_url = user_data.get('photo_url')
-        self.last_login = user_data.get('last_login')
-        self.wallet_address = user_data.get('wallet_address')
-        self.wallet_connected_at = user_data.get('wallet_connected_at')
+    def __init__(self, uid, email, display_name=None, photo_url=None):
+        self.id = uid  # Required by Flask-Login
+        self.uid = uid
+        self.email = email
+        self.display_name = display_name or email.split('@')[0]
+        self.photo_url = photo_url
+        self._is_authenticated = True
+        self._is_active = True
+        self._is_anonymous = False
+
+    @property
+    def is_authenticated(self):
+        return self._is_authenticated
+    
+    @property
+    def is_active(self):
+        return self._is_active
+    
+    @property
+    def is_anonymous(self):
+        return self._is_anonymous
 
     def get_id(self):
         return str(self.id)
 
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_active(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
-    @property
-    def has_wallet(self):
-        return bool(self.wallet_address) 
+    def to_dict(self):
+        return {
+            'uid': self.uid,
+            'email': self.email,
+            'display_name': self.display_name,
+            'photo_url': self.photo_url
+        }
 
 class TestResult(db.Model):
     """Model for storing automated test results"""
@@ -55,4 +60,4 @@ class TestResult(db.Model):
             'failures': self.failures,
             'errors': self.errors,
             'output': self.output
-        } 
+        }

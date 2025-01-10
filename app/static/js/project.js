@@ -304,6 +304,7 @@ async function submitDonation(event) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        await handleDonation(projectId, amount)
         
         const result = await response.json();
         if (result.success) {

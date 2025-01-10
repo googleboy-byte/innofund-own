@@ -6,9 +6,13 @@ import os
 from functools import wraps
 import json
 from datetime import datetime
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required, current_user, LoginManager
 from app.models import User
 from urllib.parse import urlparse
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -24,9 +28,14 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'  # Only for development!
 
 def store_user_data(user_id, user_data):
     """Store user data in Firestore"""
-    users_ref = db.collection('users').document(user_id)
-    user_data['last_login'] = datetime.now()
-    users_ref.set(user_data, merge=True)
+    try:
+        users_ref = db.collection('users').document(user_id)
+        user_data['last_login'] = datetime.now()
+        users_ref.set(user_data, merge=True)
+        logger.info(f"Stored user data for {user_id}")
+    except Exception as e:
+        logger.error(f"Error storing user data: {str(e)}")
+        raise
 
 # Regular email/password routes
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -42,25 +51,37 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        
         try:
+            # Get user from Firebase
             user = firebase_auth.get_user_by_email(email)
-            # In a real app, you'd verify the password here
-            login_user(User({
-                'uid': user.uid,
-                'email': user.email,
-                'display_name': user.display_name,
-                'photo_url': user.photo_url
-            }))
+            
+            # Create User object with the new model structure
+            user_obj = User(
+                uid=user.uid,
+                email=user.email,
+                display_name=user.display_name or email.split('@')[0],
+                photo_url=user.photo_url
+            )
+            
+            # Login user
+            login_user(user_obj)
+            
+            # Store user data
             store_user_data(user.uid, {
                 'email': email,
-                'login_method': 'email',
-                'last_login': datetime.now()
+                'display_name': user_obj.display_name,
+                'photo_url': user_obj.photo_url,
+                'login_method': 'email'
             })
+            
+            logger.info(f"User {email} logged in successfully")
             return redirect(next_page)
-        except:
+            
+        except Exception as e:
+            logger.error(f"Login error for {email}: {str(e)}")
             flash('Invalid credentials')
     
-    # Pass next parameter to template
     return render_template('auth/login.html', title='Login', next=next_page)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -71,128 +92,131 @@ def register():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        name = request.form.get('name')
+        display_name = request.form.get('display_name', email.split('@')[0])
+        
         try:
+            # Create user in Firebase
             user = firebase_auth.create_user(
                 email=email,
                 password=password,
-                display_name=name
+                display_name=display_name
             )
             
-            # Create User object and login
-            user_obj = User({
-                'uid': user.uid,
-                'email': email,
-                'display_name': name
-            })
+            # Create User object
+            user_obj = User(
+                uid=user.uid,
+                email=user.email,
+                display_name=display_name
+            )
+            
+            # Login user
             login_user(user_obj)
             
             # Store user data
-            user_data = {
+            store_user_data(user.uid, {
                 'email': email,
-                'display_name': name,
-                'login_method': 'email',
-                'created_at': datetime.now(),
-                'last_login': datetime.now()
-            }
-            store_user_data(user.uid, user_data)
+                'display_name': display_name,
+                'login_method': 'email'
+            })
             
+            logger.info(f"User {email} registered successfully")
             return redirect(url_for('main.dashboard'))
-        except:
-            flash('Registration failed')
+            
+        except Exception as e:
+            logger.error(f"Registration error for {email}: {str(e)}")
+            flash('Registration failed. Please try again.')
+    
     return render_template('auth/register.html', title='Register')
 
 @auth_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('main.index'))
 
 # Google OAuth routes
 @auth_bp.route('/login/google')
 def google_login():
+    google_client_id = current_app.config.get('GOOGLE_CLIENT_ID')
+    google_client_secret = current_app.config.get('GOOGLE_CLIENT_SECRET')
+    
+    if not all([google_client_id, google_client_secret]):
+        flash('Google OAuth is not configured')
+        return redirect(url_for('auth.login'))
+    
     google = OAuth2Session(
-        current_app.config['GOOGLE_CLIENT_ID'],
-        scope=[
-            "openid",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/userinfo.profile"
-        ],
+        google_client_id,
+        scope=['openid', 'email', 'profile'],
         redirect_uri=url_for('auth.google_callback', _external=True)
     )
-    authorization_url, state = google.authorization_url(
-        GOOGLE_AUTH_URL,
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent"
-    )
+    
+    authorization_url, state = google.authorization_url(GOOGLE_AUTH_URL)
     session['oauth_state'] = state
+    
     return redirect(authorization_url)
 
 @auth_bp.route('/login/google/callback')
 def google_callback():
     if 'error' in request.args:
-        flash('Google login failed: ' + request.args.get('error', 'Unknown error'))
+        flash('Google login failed')
         return redirect(url_for('auth.login'))
-        
+    
+    google_client_id = current_app.config.get('GOOGLE_CLIENT_ID')
+    google_client_secret = current_app.config.get('GOOGLE_CLIENT_SECRET')
+    
     try:
         google = OAuth2Session(
-            current_app.config['GOOGLE_CLIENT_ID'],
+            google_client_id,
             state=session.get('oauth_state'),
             redirect_uri=url_for('auth.google_callback', _external=True)
         )
         
+        # Get token
         token = google.fetch_token(
             GOOGLE_TOKEN_URL,
-            client_secret=current_app.config['GOOGLE_CLIENT_SECRET'],
+            client_secret=google_client_secret,
             authorization_response=request.url
         )
         
+        # Get user info
         resp = google.get(GOOGLE_USERINFO_URL)
-        if resp.status_code != 200:
-            raise Exception(f"Failed to get user info: {resp.text}")
-            
         user_info = resp.json()
         
+        # Get or create Firebase user
         try:
             user = firebase_auth.get_user_by_email(user_info['email'])
         except:
             user = firebase_auth.create_user(
                 email=user_info['email'],
-                display_name=user_info['name'],
+                display_name=user_info.get('name'),
                 photo_url=user_info.get('picture')
             )
         
-        # Replace session with Flask-Login
-        user_obj = User({
-            'uid': user.uid,
-            'email': user_info['email'],
-            'display_name': user_info['name'],
-            'photo_url': user_info.get('picture')
-        })
+        # Create User object
+        user_obj = User(
+            uid=user.uid,
+            email=user_info['email'],
+            display_name=user_info.get('name'),
+            photo_url=user_info.get('picture')
+        )
+        
+        # Login user
         login_user(user_obj)
         
         # Store user data
-        user_data = {
+        store_user_data(user.uid, {
             'email': user_info['email'],
-            'display_name': user_info['name'],
+            'display_name': user_info.get('name'),
             'photo_url': user_info.get('picture'),
-            'login_method': 'google',
-            'last_login': datetime.now()
-        }
-        if not db.collection('users').document(user.uid).get().exists:
-            user_data['created_at'] = datetime.now()
+            'login_method': 'google'
+        })
         
-        store_user_data(user.uid, user_data)
-        
-        next_page = request.args.get('next')
-        if not next_page or urlparse(next_page).netloc != '':
-            next_page = url_for('main.dashboard')
-        return redirect(next_page)
+        logger.info(f"User {user_info['email']} logged in via Google")
+        return redirect(url_for('main.dashboard'))
         
     except Exception as e:
-        print("Google login error:", str(e))
-        flash('Failed to log in with Google')
+        logger.error(f"Google OAuth error: {str(e)}")
+        flash('Google login failed')
         return redirect(url_for('auth.login'))
 
 # GitHub OAuth routes
@@ -203,8 +227,7 @@ def github_login():
 
 @auth_bp.route('/auth/github/callback', methods=['GET', 'POST'])
 def github_callback():
-    print("Method:", request.method)
-    print("Session before:", dict(session))  # Debug print
+    logger.info("GitHub callback received")
     
     if request.method == 'POST':
         try:
@@ -222,63 +245,52 @@ def github_callback():
                 )
             
             # Store user data
-            user_data = {
+            store_user_data(user.uid, {
                 'email': user_info['email'],
                 'display_name': user_info['displayName'],
                 'photo_url': user_info['photoURL'],
-                'login_method': 'github',
-                'last_login': datetime.now()
-            }
-            if not db.collection('users').document(user.uid).get().exists:
-                user_data['created_at'] = datetime.now()
+                'login_method': 'github'
+            })
             
-            store_user_data(user.uid, user_data)
-            
-            # Return success without logging in yet
+            logger.info(f"GitHub user data stored for {user_info['email']}")
             return jsonify({'success': True})
             
         except Exception as e:
-            print("GitHub login error:", str(e))
+            logger.error(f"GitHub login error (POST): {str(e)}")
             return jsonify({'success': False, 'error': str(e)}), 400
     
     # Handle GET request after Firebase Auth
     try:
-        print("Query params:", request.args)
         id_token = request.args.get('id_token')
         if not id_token:
             raise ValueError("No ID token provided")
-            
+        
         decoded_token = firebase_auth.verify_id_token(id_token)
         uid = decoded_token['uid']
-        print(f"Decoded token uid: {uid}")  # Debug print
+        logger.info(f"Verified GitHub token for UID: {uid}")
         
         user = firebase_auth.get_user(uid)
-        print(f"Firebase user: {user.__dict__}")  # Debug print
-        
         user_doc = db.collection('users').document(uid).get()
         user_data = user_doc.to_dict() if user_doc.exists else {}
-        print(f"Firestore data: {user_data}")  # Debug print
         
-        user_obj = User({
-            'uid': user.uid,
-            'email': user.email,
-            'display_name': user.display_name,
-            'photo_url': user.photo_url,
-            **user_data
-        })
+        # Create User object with new model structure
+        user_obj = User(
+            uid=user.uid,
+            email=user.email,
+            display_name=user.display_name,
+            photo_url=user.photo_url
+        )
         
         # Force logout any existing user
         logout_user()
         
-        # Login with remember=True and force=True
-        login_success = login_user(user_obj, remember=True, force=True)
-        print(f"Login success: {login_success}")
-        print(f"Current user authenticated: {current_user.is_authenticated}")
-        print(f"Current user id: {current_user.get_id()}")
-        print("Session after:", dict(session))  # Debug print
+        # Login with remember=True
+        login_success = login_user(user_obj, remember=True)
         
         if not login_success:
             raise ValueError("Failed to login user")
+        
+        logger.info(f"GitHub user {user.email} logged in successfully")
         
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
@@ -287,8 +299,28 @@ def github_callback():
         return redirect(next_page)
         
     except Exception as e:
-        print("GitHub callback error:", str(e))
-        import traceback
-        traceback.print_exc()
-        flash('Failed to complete GitHub login')
-        return redirect(url_for('auth.login')) 
+        logger.error(f"GitHub callback error (GET): {str(e)}")
+        flash('GitHub login failed')
+        return redirect(url_for('auth.login'))
+
+login_manager = LoginManager()
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        # Get user from Firebase
+        user = firebase_auth.get_user(user_id)
+        
+        # Get additional data from Firestore
+        user_doc = db.collection('users').document(user_id).get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
+        
+        # Create User object
+        return User(
+            uid=user.uid,
+            email=user.email,
+            display_name=user.display_name or user_data.get('display_name'),
+            photo_url=user.photo_url or user_data.get('photo_url')
+        )
+    except Exception as e:
+        logger.error(f"Error loading user {user_id}: {str(e)}")
+        return None

@@ -29,204 +29,279 @@ body::after {
 {% endblock %}
 
 {% block content %}
-<div class="projects-container">
+<div class="container mt-5">
     <div class="projects-header">
         <h2>My Projects</h2>
-        <a href="{{ url_for('main.create_project') }}" class="create-btn">+ New Project</a>
+        <a href="{{ url_for('main.create_project') }}" class="btn btn-primary">Create New Project</a>
     </div>
 
-    <div class="projects-grid" id="projects-grid">
+    {% if projects %}
+    <div class="projects-grid">
         {% for project in projects %}
-        <div class="project-card {% if project.status == 'inactive' %}deactivated-theme{% endif %}" onclick="goToProject('{{ project.id }}', event)">
+        <div class="project-card">
             <div class="project-header">
                 <h3>{{ project.title }}</h3>
+                <span class="project-status {{ project.status }}">{{ project.status }}</span>
             </div>
             
-            <div class="project-body">
-                <p class="project-description">{{ project.description[:200] }}...</p>
-                
-                <div class="funding-progress">
-                    <div class="progress-stats">
-                        <span class="raised">{{ project.funds_raised|default(0, true) }} ETH</span>
-                        <span class="goal">{{ project.goal_amount }} ETH</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {{ (project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int }}%"></div>
-                    </div>
-                    <div class="progress-percentage">
-                        {{ ((project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int) }}% funded
-                    </div>
-                </div>
-
+            <div class="project-info">
+                <p class="project-description">{{ project.description[:150] }}{% if project.description|length > 150 %}...{% endif %}</p>
                 <div class="project-meta">
-                    <div class="meta-item">
-                        <span class="label">Goal:</span>
-                        <span class="value">{{ project.goal_amount }} ETH</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="label">Team:</span>
-                        <span class="value">{{ project.team_members|length }} members</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="label">Documents:</span>
-                        <span class="value">{{ project.documents|length }} files</span>
-                    </div>
+                    <span class="project-date">Created: {{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                    <span class="project-goal">Goal: {{ project.goal_amount }} ETH</span>
                 </div>
+                {% if project.current_amount %}
+                <div class="progress-container">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ (project.current_amount / project.goal_amount * 100)|round|int }}%">
+                        </div>
+                    </div>
+                    <span class="progress-text">{{ project.current_amount }} ETH raised</span>
+                </div>
+                {% endif %}
             </div>
-
-            <div class="project-footer">
-                <span class="project-date">Created: {{ moment(project.created_at).fromNow() }}</span>
-                <span class="project-status {{ project.status }}">{{ project.status|title }}</span>
+            
+            <div class="project-actions">
+                <a href="{{ url_for('main.view_project', project_id=project.id) }}" class="btn btn-outline-primary">View Details</a>
+                <a href="{{ url_for('main.edit_project', project_id=project.id) }}" class="btn btn-outline-secondary">Edit</a>
+                {% if project.status == 'active' %}
+                <button onclick="deactivateProject('{{ project.id }}')" class="btn btn-outline-danger">Deactivate</button>
+                {% endif %}
             </div>
-        </div>
-        {% else %}
-        <div class="no-projects">
-            <p>You haven't created any projects yet.</p>
-            <a href="{{ url_for('main.create_project') }}" class="create-btn">Create Your First Project</a>
         </div>
         {% endfor %}
     </div>
 
     {% if has_more %}
-    <div id="loading-spinner" class="loading-spinner" style="display: none;">
-        <div class="spinner"></div>
-        <p>Loading more projects...</p>
+    <div class="load-more">
+        <button id="load-more-btn" class="btn btn-outline-primary" onclick="loadMoreProjects()">Load More</button>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="no-projects">
+        <p>You haven't created any projects yet.</p>
+        <a href="{{ url_for('main.create_project') }}" class="btn btn-primary">Create Your First Project</a>
     </div>
     {% endif %}
 </div>
 
-<style>
-.loading-spinner {
-    text-align: center;
-    padding: 20px;
-    margin-top: 20px;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    margin: 0 auto;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-
 <script>
 let currentPage = 1;
-let loading = false;
-let hasMore = {{ 'true' if has_more else 'false' }};
 
-function goToProject(projectId, event) {
-    window.location.href = `/view-project/${projectId}`;
+function loadMoreProjects() {
+    currentPage++;
+    fetch(`/api/my-projects?page=${currentPage}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.projects && data.projects.length > 0) {
+                const projectsGrid = document.querySelector('.projects-grid');
+                data.projects.forEach(project => {
+                    const projectCard = createProjectCard(project);
+                    projectsGrid.appendChild(projectCard);
+                });
+                
+                if (!data.has_more) {
+                    document.getElementById('load-more-btn').style.display = 'none';
+                }
+            }
+        })
+        .catch(error => console.error('Error loading more projects:', error));
 }
 
 function createProjectCard(project) {
-    const fundingProgress = ((project.funds_raised || 0) / project.goal_amount * 100).toFixed(0);
-    return `
-        <div class="project-card ${project.status === 'inactive' ? 'deactivated-theme' : ''}" onclick="goToProject('${project.id}', event)">
-            <div class="project-header">
-                <h3>${project.title}</h3>
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    
+    const progressPercentage = project.current_amount 
+        ? Math.round((project.current_amount / project.goal_amount) * 100) 
+        : 0;
+        
+    const createdDate = new Date(project.created_at);
+    
+    card.innerHTML = `
+        <div class="project-header">
+            <h3>${project.title}</h3>
+            <span class="project-status ${project.status}">${project.status}</span>
+        </div>
+        
+        <div class="project-info">
+            <p class="project-description">${project.description.substring(0, 150)}${project.description.length > 150 ? '...' : ''}</p>
+            <div class="project-meta">
+                <span class="project-date">Created: ${createdDate.toLocaleString()}</span>
+                <span class="project-goal">Goal: ${project.goal_amount} ETH</span>
             </div>
-            
-            <div class="project-body">
-                <p class="project-description">${project.description.substring(0, 200)}...</p>
-                
-                <div class="funding-progress">
-                    <div class="progress-stats">
-                        <span class="raised">${project.funds_raised || 0} ETH</span>
-                        <span class="goal">${project.goal_amount} ETH</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${fundingProgress}%"></div>
-                    </div>
-                    <div class="progress-percentage">
-                        ${fundingProgress}% funded
-                    </div>
+            ${project.current_amount ? `
+            <div class="progress-container">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: ${progressPercentage}%"></div>
                 </div>
-
-                <div class="project-meta">
-                    <div class="meta-item">
-                        <span class="label">Goal:</span>
-                        <span class="value">${project.goal_amount} ETH</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="label">Team:</span>
-                        <span class="value">${(project.team_members || []).length} members</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="label">Documents:</span>
-                        <span class="value">${(project.documents || []).length} files</span>
-                    </div>
-                </div>
+                <span class="progress-text">${project.current_amount} ETH raised</span>
             </div>
-
-            <div class="project-footer">
-                <span class="project-date">Created: ${moment(project.created_at).fromNow()}</span>
-                <span class="project-status ${project.status}">${project.status.charAt(0).toUpperCase() + project.status.slice(1)}</span>
-            </div>
+            ` : ''}
+        </div>
+        
+        <div class="project-actions">
+            <a href="/view-project/${project.id}" class="btn btn-outline-primary">View Details</a>
+            <a href="/edit-project/${project.id}" class="btn btn-outline-secondary">Edit</a>
+            ${project.status === 'active' ? `
+            <button onclick="deactivateProject('${project.id}')" class="btn btn-outline-danger">Deactivate</button>
+            ` : ''}
         </div>
     `;
+    
+    return card;
 }
 
-async function loadMoreProjects() {
-    if (!hasMore || loading) return;
-    
-    loading = true;
-    const spinner = document.getElementById('loading-spinner');
-    spinner.style.display = 'block';
-    
-    try {
-        const response = await fetch(`/api/my-projects?page=${currentPage + 1}`);
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error('Error loading projects:', data.error);
-            return;
-        }
-        
-        const projectsGrid = document.getElementById('projects-grid');
-        data.projects.forEach(project => {
-            projectsGrid.insertAdjacentHTML('beforeend', createProjectCard(project));
+function deactivateProject(projectId) {
+    if (confirm('Are you sure you want to deactivate this project? This action cannot be undone.')) {
+        fetch(`/deactivate-project/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to deactivate project: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deactivating the project');
         });
-        
-        currentPage++;
-        hasMore = data.has_more;
-        
-        if (!hasMore) {
-            spinner.style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    } finally {
-        loading = false;
-        spinner.style.display = 'none';
     }
 }
-
-// Infinite scroll implementation
-function handleScroll() {
-    const spinner = document.getElementById('loading-spinner');
-    if (!spinner) return;  // No more projects to load
-    
-    const rect = spinner.getBoundingClientRect();
-    const isVisible = rect.top <= window.innerHeight;
-    
-    if (isVisible) {
-        loadMoreProjects();
-    }
-}
-
-window.addEventListener('scroll', handleScroll);
-window.addEventListener('resize', handleScroll);
-
-// Initial check in case the page is not tall enough to scroll
-document.addEventListener('DOMContentLoaded', handleScroll);
 </script>
-{% endblock %} 
+
+<style>
+.projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.project-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.project-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #333;
+}
+
+.project-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.project-status.active {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.project-status.completed {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.project-status.inactive {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.project-info {
+    flex-grow: 1;
+    margin-bottom: 1rem;
+}
+
+.project-description {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.project-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.progress-container {
+    margin-top: 1rem;
+}
+
+.progress {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    background: #1976d2;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.project-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.project-actions .btn {
+    flex: 1;
+}
+
+.load-more {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.no-projects {
+    text-align: center;
+    padding: 3rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.no-projects p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

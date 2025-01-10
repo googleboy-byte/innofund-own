@@ -169,6 +169,58 @@ body::after {
 .create-btn:hover {
     opacity: 0.9;
 }
+
+.transaction-list {
+    margin-top: 20px;
+}
+
+.transaction-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.transaction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.transaction-header h5 {
+    margin: 0;
+    color: #333;
+}
+
+.transaction-date {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.transaction-details p {
+    margin: 5px 0;
+    color: #555;
+}
+
+.status-pending {
+    color: #f39c12;
+}
+
+.status-completed {
+    color: #27ae60;
+}
+
+.status-failed {
+    color: #e74c3c;
+}
+
+.no-transactions {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+}
 </style>
 {% endblock %}
 
@@ -189,26 +241,28 @@ body::after {
                 {% for tx in transactions %}
                 <div class="transaction-card">
                     <div class="transaction-header">
-                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
-                            {{ tx.project.title }}
+                        <a href="{{ url_for('main.view_project', project_id=tx.project_id) }}" class="transaction-project">
+                            {{ tx.project_title }}
                         </a>
-                        <span class="transaction-amount {{ tx.type }}">
-                            {% if tx.type == 'contribution' %}
-                            -{{ tx.amount }} ETH
-                            {% else %}
-                            +{{ tx.amount }} ETH
-                            {% endif %}
-                        </span>
+                        <span class="transaction-date">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</span>
                     </div>
                     <div class="transaction-details">
                         <span class="transaction-type">
-                            {% if tx.type == 'contribution' %}
-                            Contributed to {{ tx.project.creator_name }}'s project
-                            {% else %}
-                            Received from {{ tx.contributor_name }}
+                            Contributed {{ tx.amount }} AVAX
+                            {% if tx.platform_fees %}
+                            (+ {{ tx.platform_fees }} AVAX platform fee)
                             {% endif %}
                         </span>
-                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                        <div class="transaction-meta">
+                            <span class="transaction-hash">
+                                <a href="https://testnet.snowtrace.io/tx/{{ tx.transaction_hash }}" target="_blank" rel="noopener noreferrer">
+                                    View on Snowtrace
+                                </a>
+                            </span>
+                            <span class="transaction-status {{ tx.status }}">
+                                {{ tx.status|title }}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -220,18 +274,18 @@ body::after {
                 {% for tx in transactions if tx.type == 'contribution' %}
                 <div class="transaction-card">
                     <div class="transaction-header">
-                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
-                            {{ tx.project.title }}
+                        <a href="{{ url_for('main.view_project', project_id=tx.project_id) }}" class="transaction-project">
+                            {{ tx.project_title }}
                         </a>
-                        <span class="transaction-amount contribution">
-                            -{{ tx.amount }} ETH
-                        </span>
+                        <span class="transaction-date">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</span>
                     </div>
                     <div class="transaction-details">
                         <span class="transaction-type">
-                            Contributed to {{ tx.project.creator_name }}'s project
+                            Contributed to {{ tx.project_title }}
                         </span>
-                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                        <span class="transaction-amount contribution">
+                            -{{ tx.amount }} AVAX
+                        </span>
                     </div>
                 </div>
                 {% else %}
@@ -248,18 +302,18 @@ body::after {
                 {% for tx in transactions if tx.type == 'received' %}
                 <div class="transaction-card">
                     <div class="transaction-header">
-                        <a href="{{ url_for('main.view_project', project_id=tx.project.id) }}" class="transaction-project">
-                            {{ tx.project.title }}
+                        <a href="{{ url_for('main.view_project', project_id=tx.project_id) }}" class="transaction-project">
+                            {{ tx.project_title }}
                         </a>
-                        <span class="transaction-amount received">
-                            +{{ tx.amount }} ETH
-                        </span>
+                        <span class="transaction-date">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</span>
                     </div>
                     <div class="transaction-details">
                         <span class="transaction-type">
                             Received from {{ tx.contributor_name }}
                         </span>
-                        <span class="transaction-date">{{ moment(tx.timestamp).fromNow() }}</span>
+                        <span class="transaction-amount received">
+                            +{{ tx.amount }} AVAX
+                        </span>
                     </div>
                 </div>
                 {% else %}
@@ -293,4 +347,4 @@ function showTab(tabName) {
     document.getElementById(`${tabName}-tab`).classList.add('active');
 }
 </script>
-{% endblock %} 
+{% endblock %}

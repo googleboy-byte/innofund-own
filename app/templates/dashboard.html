@@ -4,6 +4,7 @@
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/project_status.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/toast.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -33,8 +34,8 @@
             <div class="filter-group">
                 <label>Goal Amount</label>
                 <div class="goal-inputs">
-                    <input type="number" id="min-goal" placeholder="Min ETH">
-                    <input type="number" id="max-goal" placeholder="Max ETH">
+                    <input type="number" id="min-goal" placeholder="Min AVAX">
+                    <input type="number" id="max-goal" placeholder="Max AVAX">
                 </div>
             </div>
             
@@ -78,8 +79,8 @@
                 
                 <div class="funding-progress">
                     <div class="progress-stats">
-                        <span class="raised">{{ project.funds_raised|default(0, true) }} ETH</span>
-                        <span class="goal">of {{ project.goal_amount }} ETH goal</span>
+                        <span class="raised">{{ project.funds_raised|default(0, true) }} AVAX</span>
+                        <span class="goal">of {{ project.goal_amount }} AVAX goal</span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: {{ (project.funds_raised|default(0, true) / project.goal_amount * 100)|round|int }}%" data-funds="{{ project.funds_raised|default(0, true) }}" data-goal="{{ project.goal_amount }}"></div>
@@ -116,7 +117,7 @@
                     <div class="creator-avatar">{{ project.creator_name[0]|upper }}</div>
                     <div class="creator-details">
                         <span class="creator-name">{{ project.creator_name }}</span>
-                        <span class="creation-date">Created {{ moment(project.created_at).fromNow() }}</span>
+                        <span class="creation-date">Created {{ moment(project.created_at|default(none, true)).fromNow() }}</span>
                     </div>
                 </div>
             </div>
@@ -147,7 +148,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="donationAmount">Amount (ETH)</label>
+                    <label for="donationAmount">Amount (AVAX)</label>
                     <input type="number" 
                            id="donationAmount" 
                            name="amount"
@@ -168,7 +169,60 @@
     {% endif %}
 </div>
 
+<!-- Add donation.js script -->
+<script src="{{ url_for('static', filename='js/donation.js') }}"></script>
+
 <script>
+// Toast notification function
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' 
+        ? '<i class="fas fa-check-circle"></i>'
+        : '<i class="fas fa-exclamation-circle"></i>';
+    
+    toast.innerHTML = `
+        <div class="toast-content">
+            ${icon}
+            <span>${message}</span>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    document.getElementById('toast-container').appendChild(toast);
+    
+    // Show the toast
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+function showDonateModal(projectId, projectTitle) {
+    const modal = document.getElementById('donate-modal');
+    modal.style.display = 'block';
+    modal.dataset.projectId = projectId;
+    modal.dataset.projectTitle = projectTitle;
+    
+    // Close modal when clicking the close button
+    modal.querySelector('.close').onclick = function() {
+        modal.style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+}
+
 // Scroll behavior for search section
 let lastScrollY = window.scrollY;
 let ticking = false;
@@ -291,8 +345,8 @@ function performSearch() {
                             
                             <div class="funding-progress">
                                 <div class="progress-stats">
-                                    <span class="raised">${project.funds_raised || 0} ETH</span>
-                                    <span class="goal">of ${project.goal_amount} ETH goal</span>
+                                    <span class="raised">${project.funds_raised || 0} AVAX</span>
+                                    <span class="goal">of ${project.goal_amount} AVAX goal</span>
                                 </div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: ${Math.round((project.funds_raised || 0) / project.goal_amount * 100)}%" data-funds="${project.funds_raised || 0}" data-goal="${project.goal_amount}"></div>
@@ -375,8 +429,8 @@ function createProjectCard(project) {
                 
                 <div class="funding-progress">
                     <div class="progress-stats">
-                        <span class="raised">${project.funds_raised || 0} ETH</span>
-                        <span class="goal">of ${project.goal_amount} ETH goal</span>
+                        <span class="raised">${project.funds_raised || 0} AVAX</span>
+                        <span class="goal">of ${project.goal_amount} AVAX goal</span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: ${Math.round((project.funds_raised || 0) / project.goal_amount * 100)}%" data-funds="${project.funds_raised || 0}" data-goal="${project.goal_amount}"></div>
@@ -486,109 +540,6 @@ function goToProject(projectId, event) {
     window.location.href = `/view-project/${projectId}`;
 }
 
-{% if current_user.is_authenticated %}
-function showDonateModal(projectId, projectTitle) {
-    const modal = document.getElementById('donate-modal');
-    modal.style.display = 'block';
-    modal.dataset.projectId = projectId;
-    modal.dataset.projectTitle = projectTitle;
-    
-    // Close modal when clicking the close button
-    modal.querySelector('.close').onclick = function() {
-        modal.style.display = 'none';
-    }
-    
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-}
-
-// Toast notification function
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    
-    const icon = type === 'success' 
-        ? '<i class="fas fa-check-circle"></i>'
-        : '<i class="fas fa-exclamation-circle"></i>';
-    
-    toast.innerHTML = `
-        <div class="toast-content">
-            ${icon}
-            <span>${message}</span>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    document.getElementById('toast-container').appendChild(toast);
-    
-    // Show the toast
-    setTimeout(() => toast.classList.add('show'), 100);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 5000);
-}
-
-function submitDonation(event) {
-    event.preventDefault();
-    const modal = document.getElementById('donate-modal');
-    const projectId = modal.dataset.projectId;
-    const amount = document.getElementById('donationAmount').value;
-    
-    if (!amount || amount <= 0) {
-        showToast('Please enter a valid donation amount', 'error');
-        return;
-    }
-
-    // Show loading state
-    const donateBtn = modal.querySelector('.donate-btn');
-    const originalText = donateBtn.innerHTML;
-    donateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Processing...';
-    donateBtn.disabled = true;
-
-    // Make API call to process donation
-    fetch(`/api/donate/${projectId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ amount: parseFloat(amount) })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Close modal first
-            modal.style.display = 'none';
-            // Show success message
-            showToast('Donation successful! Thank you for your support.');
-            // Wait for toast to appear before reloading
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            // Show error message
-            showToast(data.error || 'Failed to process donation. Please try again.', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error processing donation:', error);
-        showToast('An error occurred while processing your donation. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        donateBtn.innerHTML = originalText;
-        donateBtn.disabled = false;
-        // Reset the form
-        document.getElementById('donationAmount').value = '';
-    });
-}
-
 function handleVote(event, projectId, voteType) {
     event.stopPropagation();
     fetch('/api/vote/' + projectId, {
@@ -611,6 +562,5 @@ function handleVote(event, projectId, voteType) {
         console.error('Error voting:', error);
     });
 }
-{% endif %}
 </script>
-{% endblock %} 
+{% endblock %}
