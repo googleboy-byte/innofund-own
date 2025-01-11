@@ -49,7 +49,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Goal Amount (ETH)</label>
+                    <label class="form-label">Goal Amount (AVAX)</label>
                     <input type="number" 
                            name="goal_amount" 
                            class="form-control" 
@@ -58,8 +58,8 @@
                            max="200"
                            oninput="validateGoalAmount(this)"
                            required>
-                    <span class="form-hint">Maximum goal amount: 200 ETH</span>
-                    <span class="error-message" style="display: none;">Goal amount cannot exceed 200 ETH</span>
+                    <span class="form-hint">Maximum goal amount: 200 AVAX</span>
+                    <span class="error-message" style="display: none;">Goal amount cannot exceed 200 AVAX</span>
                 </div>
             </div>
 
@@ -70,7 +70,8 @@
                     <div class="file-upload-container">
                         <input type="file" name="documents[]" id="file-upload" accept=".pdf" multiple class="file-input">
                         <label for="file-upload" class="file-upload-label">
-                            <span>Attach PDFs</span>
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Drag & drop PDFs here or click to browse</span>
                         </label>
                         <div id="file-list" class="file-list"></div>
                     </div>
@@ -83,162 +84,279 @@
 </div>
 
 <style>
+.create-project-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.project-form {
+    background: var(--dark-secondary);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 255, 157, 0.08);
+}
+
+.form-columns {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--neon-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 157, 0.1);
+}
+
 .team-member-input {
-    @apply flex items-center gap-3 mb-2 bg-dark-bg/50 rounded-lg p-3;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--dark-bg);
+    border-radius: 8px;
+    padding: 0.75rem;
 }
 
 .member-avatar {
-    @apply w-10 h-10 rounded-full overflow-hidden flex items-center justify-center 
-           bg-dark-bg text-text-primary text-sm font-medium flex-shrink-0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .member-avatar img {
-    @apply w-full h-full object-cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .avatar-placeholder {
-    @apply w-full h-full flex items-center justify-center bg-dark-bg;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark-bg);
 }
 
 .member-details {
-    @apply flex-1;
+    flex: 1;
 }
 
 .member-role {
-    @apply text-neon-green text-xs font-medium;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
 .member-name {
-    @apply text-text-primary text-sm;
-}
-
-.member-input {
-    @apply flex-1 relative;
-}
-
-.member-input input {
-    @apply pr-8;  /* Space for the loading/check icon */
-}
-
-.member-input i {
-    @apply absolute right-2 top-1/2 transform -translate-y-1/2;
-}
-
-.member-input i.loading {
-    @apply text-text-secondary animate-spin;
-}
-
-.member-input i.valid {
-    @apply text-neon-green;
-}
-
-.member-input i.invalid {
-    @apply text-red-500;
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 .add-member-btn {
-    @apply flex items-center gap-2 text-text-secondary hover:text-neon-green mt-2
-           transition-colors text-sm font-medium;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.add-member-btn i {
-    @apply text-lg;
+.add-member-btn:hover {
+    background: var(--neon-green);
+    color: #000;
 }
 
-.remove-member {
-    @apply text-text-secondary hover:text-red-500 text-xl font-medium transition-colors ml-2;
+.file-upload-section {
+    background: var(--dark-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.file-upload-container {
+    position: relative;
+}
+
+.file-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    border: 2px dashed #333;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.file-upload-label:hover {
+    border-color: var(--neon-green);
+}
+
+.file-upload-label i {
+    font-size: 2rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.file-upload-label span {
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.file-list {
+    margin-top: 1rem;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.file-name {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.remove-file {
+    color: var(--neon-red);
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--neon-green);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+}
+
+.submit-btn:hover {
+    background: var(--dark-green);
 }
 
 .form-hint {
-    @apply text-text-secondary text-xs mt-1 block;
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
 }
 
 .error-message {
-    @apply text-red-500 text-xs mt-1 block;
+    color: var(--neon-red);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .form-columns {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
 <script>
-let debounceTimer;
-
 function addTeamMember() {
     const container = document.getElementById('team-members-container');
-    const newMember = document.createElement('div');
-    newMember.className = 'team-member-input';
-    newMember.innerHTML = `
-        <div class="member-avatar">
-            <div class="avatar-placeholder">?</div>
-        </div>
+    const memberInput = document.createElement('div');
+    memberInput.className = 'team-member-input';
+    memberInput.innerHTML = `
         <div class="member-input">
             <input type="text" 
-                   class="form-control" 
-                   placeholder="Enter member's profile link"
-                   oninput="validateProfileLink(this)">
-            <i class="fas fa-circle-notch loading" style="display: none;"></i>
+                   placeholder="Enter team member's profile URL" 
+                   onchange="validateProfileLink(this)"
+                   class="form-control">
+            <i class="fas fa-circle-notch"></i>
         </div>
-        <button type="button" class="remove-member" onclick="removeMember(this)">×</button>
-        <input type="hidden" name="team_members[]" value="">
+        <button type="button" class="remove-member-btn" onclick="removeMember(this)">
+            <i class="fas fa-times"></i>
+        </button>
     `;
-    container.appendChild(newMember);
+    container.appendChild(memberInput);
 }
 
 async function validateProfileLink(input) {
-    const memberInput = input.closest('.member-input');
-    const hiddenInput = input.closest('.team-member-input').querySelector('input[type="hidden"]');
-    const loadingIcon = memberInput.querySelector('.loading');
-    const avatar = input.closest('.team-member-input').querySelector('.member-avatar');
-    
-    // Clear any existing status
-    memberInput.querySelector('i')?.remove();
-    
-    if (!input.value) {
-        hiddenInput.value = '';
-        return;
-    }
-    
-    // Show loading icon
-    const icon = document.createElement('i');
+    const icon = input.nextElementSibling;
     icon.className = 'fas fa-circle-notch loading';
-    memberInput.appendChild(icon);
     
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
-        try {
-            // Extract user ID from profile link
-            const userId = input.value.split('/').pop();
-            
-            // Fetch user profile data
-            const response = await fetch(`/api/user/${userId}`);
-            const userData = await response.json();
-            
-            if (userData.success) {
-                // Update hidden input with validated profile link
-                hiddenInput.value = input.value;
-                
-                // Update avatar and name
-                avatar.innerHTML = userData.photo_url 
-                    ? `<img src="${userData.photo_url}" alt="${userData.display_name}">`
-                    : `<div class="avatar-placeholder">${userData.display_name[0].toUpperCase()}</div>`;
-                
-                // Show success icon
-                icon.className = 'fas fa-check valid';
-            } else {
-                hiddenInput.value = '';
-                icon.className = 'fas fa-times invalid';
-            }
-        } catch (error) {
-            console.error('Profile validation error:', error);
-            hiddenInput.value = '';
+    try {
+        const response = await fetch(input.value);
+        if (response.ok) {
+            icon.className = 'fas fa-check valid';
+            // Add hidden input for form submission
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'team_members[]';
+            hiddenInput.value = input.value;
+            input.parentElement.appendChild(hiddenInput);
+        } else {
             icon.className = 'fas fa-times invalid';
         }
-    }, 500);
+    } catch (error) {
+        icon.className = 'fas fa-times invalid';
+    }
 }
 
 function removeMember(button) {
-    const memberInput = button.closest('.team-member-input');
-    if (!memberInput.classList.contains('creator')) {
-        memberInput.remove();
-    }
+    button.closest('.team-member-input').remove();
 }
 
 // Store selected files
@@ -246,17 +364,10 @@ let selectedFiles = new DataTransfer();
 
 // File upload handling
 document.getElementById('file-upload').addEventListener('change', function(e) {
-    const fileList = document.getElementById('file-list');
-    
-    // Add new files to our DataTransfer object
-    for(let file of this.files) {
-        selectedFiles.items.add(file);
+    const files = e.target.files;
+    for (let i = 0; i < files.length; i++) {
+        selectedFiles.items.add(files[i]);
     }
-    
-    // Update the input's files
-    this.files = selectedFiles.files;
-    
-    // Update the display
     updateFileList();
 });
 
@@ -264,16 +375,21 @@ function updateFileList() {
     const fileList = document.getElementById('file-list');
     fileList.innerHTML = '';
     
-    for(let i = 0; i < selectedFiles.files.length; i++) {
+    for (let i = 0; i < selectedFiles.files.length; i++) {
         const file = selectedFiles.files[i];
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
         fileItem.innerHTML = `
-            <span>${file.name}</span>
-            <button type="button" class="remove-file" data-index="${i}">×</button>
+            <span class="file-name">${file.name}</span>
+            <button type="button" class="remove-file" data-index="${i}">
+                <i class="fas fa-times"></i>
+            </button>
         `;
         fileList.appendChild(fileItem);
     }
+    
+    // Update the actual file input
+    document.getElementById('file-upload').files = selectedFiles.files;
 }
 
 // Event delegation for remove buttons
@@ -282,61 +398,25 @@ document.getElementById('file-list').addEventListener('click', function(e) {
         const index = parseInt(e.target.dataset.index);
         const newFiles = new DataTransfer();
         
-        // Copy all files except the removed one
-        for(let i = 0; i < selectedFiles.files.length; i++) {
+        for (let i = 0; i < selectedFiles.files.length; i++) {
             if (i !== index) {
                 newFiles.items.add(selectedFiles.files[i]);
             }
         }
         
-        // Update our stored files
         selectedFiles = newFiles;
-        
-        // Update the input's files
-        document.getElementById('file-upload').files = selectedFiles.files;
-        
-        // Update the display
         updateFileList();
-    }
-});
-
-// Add file validation
-document.querySelector('form').addEventListener('submit', function(e) {
-    const files = selectedFiles.files;
-    if (files.length > 5) {  // Maximum 5 files
-        e.preventDefault();
-        alert('Maximum 5 files allowed');
-        return;
-    }
-    
-    let totalSize = 0;
-    for (let file of files) {
-        totalSize += file.size;
-        if (file.size > 10 * 1024 * 1024) {  // 10MB per file
-            e.preventDefault();
-            alert('Each file must be less than 10MB');
-            return;
-        }
-    }
-    
-    if (totalSize > 50 * 1024 * 1024) {  // 50MB total
-        e.preventDefault();
-        alert('Total file size must be less than 50MB');
-        return;
     }
 });
 
 function validateGoalAmount(input) {
     const errorMessage = input.parentElement.querySelector('.error-message');
     if (input.value > 200) {
-        input.value = 200;
         errorMessage.style.display = 'block';
-        setTimeout(() => {
-            errorMessage.style.display = 'none';
-        }, 3000);
+        input.value = 200;
     } else {
         errorMessage.style.display = 'none';
     }
 }
 </script>
-{% endblock %} 
+{% endblock %}

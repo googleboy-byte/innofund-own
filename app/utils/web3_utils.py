@@ -93,8 +93,8 @@ def create_project_on_chain(name, description, funding_goal, deadline_days):
         # Convert funding goal to Wei
         funding_goal_wei = Web3.to_wei(funding_goal, 'ether')
         
-        # Convert days to seconds for duration
-        duration_seconds = int(deadline_days * 24 * 60 * 60)
+        # Convert days to seconds for duration (using 12 hours instead of days)
+        duration_seconds = int(deadline_days * 12 * 60 * 60)  # 12 hours worth of seconds
         
         # Get the function from contract
         function = funding_contract.functions.createProject(
@@ -205,30 +205,40 @@ def contribute_to_project(project_id, amount, contributor_address):
 def create_project_proposal(project_id, description, creator_address):
     """Create a proposal for a project"""
     try:
-        function = project_dao.functions.propose(
-            [FUNDING_CONTRACT_ADDRESS],
-            [0],
-            [funding_contract.encodeABI(
-                fn_name='createProposal',
-                args=[project_id, description]
-            )],
-            description
+        # Convert project_id to integer
+        project_id = int(project_id)
+        
+        # Create the proposal call data for the funding contract
+        proposal_data = funding_contract.encodeABI(
+            fn_name='createProjectProposal',
+            args=[project_id, description]
         )
         
-        gas_estimate = function.estimate_gas({'from': creator_address})
+        # Get the propose function from DAO contract
+        function = project_dao.functions.propose(
+            [FUNDING_CONTRACT_ADDRESS],  # targets
+            [0],  # values
+            [proposal_data],  # calldatas
+            description  # description
+        )
         
-        transaction = {
-            'to': PROJECT_DAO_ADDRESS,
+        # Estimate gas
+        gas_estimate = function.estimate_gas({'from': creator_address})
+        logger.info(f"Estimated gas for proposal: {gas_estimate}")
+        
+        # Build transaction
+        transaction = function.build_transaction({
             'from': creator_address,
             'gas': gas_estimate,
             'nonce': w3.eth.get_transaction_count(creator_address),
-            'chainId': CHAIN_ID,
-            'data': function._encode_transaction_data()
-        }
+            'chainId': CHAIN_ID
+        })
         
-        logger.info(f"Proposal transaction prepared for project {project_id}")
         return transaction
 
+    except ValueError as e:
+        logger.error(f"Error creating proposal: Invalid project ID or description - {str(e)}")
+        raise
     except Exception as e:
         logger.error(f"Error creating proposal: {str(e)}")
         raise

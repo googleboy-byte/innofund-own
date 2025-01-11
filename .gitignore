@@ -1,4 +1,6 @@
 node_modules
-web3
+web3/artifacts
+web3/cache
+package-lock.json
 *.env
 firebase

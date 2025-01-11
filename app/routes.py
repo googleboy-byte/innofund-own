@@ -7,11 +7,14 @@ import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from firebase_admin import db as rtdb
 from firebase_admin import get_app
+import requests
+import json
 from .utils.web3_utils import (
     contribute_to_project, 
     create_project_on_chain, 
     get_platform_fees,
-    get_project_details
+    get_project_details,
+    create_project_proposal
 )
 
 # Initialize Firestore
@@ -233,7 +236,7 @@ def create_project():
                     name=request.form['title'],
                     description=request.form['description'],
                     funding_goal=goal_amount,
-                    deadline_days=30
+                    deadline_days=1
                 )
                 print(f"Created project on blockchain with ID: {blockchain_project_id}")
             except Exception as e:
@@ -375,7 +378,21 @@ def my_projects():
         print(f"Found {len(valid_projects)} valid projects for user")
         
         # Sort projects by creation date (newest first)
-        valid_projects.sort(key=lambda x: x.get('created_at', datetime.min), reverse=True)
+        def get_created_at(project):
+            created_at = project.get('created_at')
+            if isinstance(created_at, str):
+                try:
+                    dt = datetime.fromisoformat(created_at)
+                    # Ensure timezone awareness
+                    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+            elif isinstance(created_at, datetime):
+                # Ensure timezone awareness
+                return created_at if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+            return datetime.min.replace(tzinfo=timezone.utc)
+            
+        valid_projects.sort(key=get_created_at, reverse=True)
         
         # Get first 6 projects for initial display
         display_projects = valid_projects[:6]
@@ -1196,41 +1213,49 @@ def create_poll(project_id):
         # Check if user is project owner
         if project.get('created_by') != current_user.id:
             return jsonify({'error': 'Only project owner can create polls'}), 403
+
+        # Get blockchain project ID
+        blockchain_project_id = project.get('blockchain_project_id')
+        if not blockchain_project_id:
+            return jsonify({'error': 'Project not properly initialized on blockchain'}), 400
             
-        # Get poll data from request
-        data = request.get_json()
-        question = data.get('question')
-        options = data.get('options', [])
-        
-        # Validate poll data
-        if not question or not options:
-            return jsonify({'error': 'Question and options are required'}), 400
+        # Get user's wallet address from Firestore
+        user_doc = db.collection('users').document(current_user.id).get()
+        if not user_doc.exists:
+            return jsonify({'error': 'User not found'}), 404
             
-        if len(options) < 2 or len(options) > 5:
-            return jsonify({'error': 'Poll must have between 2 and 5 options'}), 400
+        user_data = user_doc.to_dict()
+        wallet_address = user_data.get('wallet_address')
+        if not wallet_address:
+            return jsonify({'error': 'Please connect your wallet first'}), 400
             
-        # Create proposal on blockchain first
-        response = requests.post(
-            url_for('blockchain.create_proposal', project_id=project_id, _external=True),
-            json={'description': question}
-        )
-        
-        if not response.ok:
-            return jsonify({'error': response.json().get('error', 'Failed to create proposal')}), response.status_code
-        
+        # Create proposal on blockchain directly using web3
+        try:
+            tx_data = create_project_proposal(
+                project_id=blockchain_project_id,
+                description=request.get_json().get('question'),
+                creator_address=wallet_address
+            )
+        except Exception as e:
+            print(f"Failed to create blockchain proposal: {str(e)}")
+            return jsonify({'error': f'Failed to create proposal: {str(e)}'}), 500
+            
         # Continue with poll creation in Firebase
         poll_data = {
-            'description': question,
-            'options': options,
+            'description': request.get_json().get('question'),
+            'options': request.get_json().get('options', []),
             'created_by': current_user.id,
             'created_at': datetime.utcnow(),
-            'votes': {option: [] for option in options},
-            'transaction_data': response.json().get('transaction_data')
+            'votes': {option: [] for option in request.get_json().get('options', [])},
+            'transaction_data': tx_data
         }
         
         db.collection('projects').document(project_id).collection('polls').add(poll_data)
 
-        return jsonify(response.json())
+        return jsonify({
+            'success': True,
+            'transaction_data': tx_data
+        })
 
     except Exception as e:
         print(f"Error creating poll: {str(e)}")
