@@ -23,8 +23,8 @@ if not AVALANCHE_TESTNET_URL:
 
 w3 = Web3(Web3.HTTPProvider(AVALANCHE_TESTNET_URL))
 # Add POA middleware for Avalanche
-from web3.middleware import geth_poa_middleware
-w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+from web3.middleware import ExtraDataToPOAMiddleware
+w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
 CHAIN_ID = int(os.getenv('CHAIN_ID', '43113'))  # Default to Avalanche Testnet
 
