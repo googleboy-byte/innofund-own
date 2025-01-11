@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "innofund-projects",
+  "private_key_id": "ee9ba65ff7ec8bd5955c53d281901189c465e5e1",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDEIAKx/OP+X7UV\nNyuf6OLPkLkYVRED+C8dD3n5Svizl9ER/5fp1wHe5Ka0ohls/R94EJjsdBU7DlCR\n8R8ma2pkmVM81mzC3aqionppkTOKmEWwS+SEOPigCQkWFGVk/TPU8+ubfbJDvl0K\nc07efLk/MZfxU8Q1mTpsx0bnIajIpQvg41+N66Ln5F3hxcgRTqBEbO2yKgAhJVTq\nLYZ0M/VYthHcR5CskKAaSQDqoFjh+NhDg6j7DQfPcXQVz4K3eNr+JJN6XdZWgfwu\ndQ3UiMG0of6lZhbgPQr1eidhTesPbKtfNQ07bUHJpBagX8byUI/wEfFecW3cv8Bq\nQjtyZ9ZdAgMBAAECggEAD2h3Zb3ZOKESxCutLvc4KHf1frqiJ1ZudyFB4yq3br6Y\n44nZyLqGUFlU2oCYsEYTnJZrOTpmd5kIjeqsWJOcTHJ6Rl+PNGD/WJ8csGICs1sC\nsJbJyXSDXelP0C8Ch0RYN90A79qYcHeKbjmAYvzX/eW6yvAajF5xJ14hjSOJE9g2\nN/F9xdD5C+FnI7To2cWasSWzif4nJcJI+EHSAR3y+BRa/ZgE6CW9D1Ecca4kLJW+\nj29zUlY9nyBD7sy774EIzGiKUCZiDNEpuqAnTVmXT1dDuduoW6GYc0P8Q6KVOtqv\nnwZv9DoNUCYunGql2Q8pPKvx8iHKpMrZLJau+JP3SQKBgQD4xLXHGUeucSY3TaBX\nzs0CrHKZbE4XFZVN7oEC/eoGlZjRoQF0JZ01r1KnEtWVS2AbJzdWOUIBkVnuyv/U\ngGbhZRJ4Oof4X8HDsuwuHn/3hs8dCIj92LsBjNr0kwnMj7D2ULDhEbvZXiAlkRGl\nvuPwuZ6c6+EC1dCl9LSujX+fJQKBgQDJ04m62N2J2Ej7jWTqrQKxTtGpJio2sEdP\nyOHQS9eLsSlOAbi3xadraNQH1r5g2zpS+PiRdyvlH2hG2iK3CojHvkUYt3EF93xv\nu55B5aW2jhq5e2HqiddHbgttPx10myiPS7HhIEIX7KcrF2vy80JYMeErcumtli4W\nvuXwRecw2QKBgDhPtuIpu8sl+8ObA8e8nTWUuaA3HvokvZZVfciil34EEQKq0nxr\nI0oKtMfzAHv6AvhCiUkwTtux/kyKkRyWMDOnQGYMwcicTG0zLDlIWCk8z9c/nlrv\n22z/aHTib95pTGKFY3SfIgmTP+2hCACf1FMigV/+GQIeSku2t8unZhMtAoGAKhau\nO0Psd0medq8W44Wu8RDx0id+WCdMx8upo8mdKqmIZpcfUVurvU+AIB5dV0+AizsW\ngydqBP8WvOfSo39T5Ou99xiSPl9NGPP0XeOpOjfKRPIBCmsydNfzFBY8a0vMGo37\ni2oxvlGAzxC0V1b5d/D29xugta2C8QVgaEn7m4kCgYEAnuQ2IUTumbT5GvQpFfYU\n8ePiIWl3oIq1Axvr8WqSQEUx3kf4BK0RxIuPwABTXawGDKL3tSo8CExczcCPBldS\nmTfgHJEqF3cA97mocQDm694WE9p3Rbqn06gR+VAMoWGE6WuYOtlG5jVO6fXJ/WDu\nwNJ1CY79TObzmFRd02VFHiM=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-62o38@innofund-projects.iam.gserviceaccount.com",
+  "client_id": "109114103696879070553",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-62o38%40innofund-projects.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
