@@ -4,3 +4,4 @@ web3/cache
 package-lock.json
 *.env
 firebase
+__pycache__
