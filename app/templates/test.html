@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscribe Button</title>
+  <style>
+    .text-button {
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .text-button {
+      --primary-color: #111;
+      --hovered-color: #c84747;
+      position: relative;
+      display: flex;
+      font-weight: 200;
+      font-size: 20px;
+      gap: 0.2rem;
+      align-items: center;
+    }
+
+    .text-button p {
+      margin: 0;
+      position: relative;
+      font-size: 20px;
+      color: var(--primary-color);
+    }
+
+    .text-button::after {
+      position: absolute;
+      content: "";
+      width: 0;
+      left: 0;
+      bottom: -7px;
+      background: var(--hovered-color);
+      height: 2px;
+      transition: 0.3s ease-out;
+    }
+
+    .text-button p::before {
+      position: absolute;
+      content: "";
+      width: 0%;
+      inset: 0;
+      color: var(--hovered-color);
+      overflow: hidden;
+      transition: 0.3s ease-out;
+    }
+
+    .text-button:hover::after {
+      width: 100%;
+    }
+
+    .text-button:hover p::before {
+      width: 100%;
+    }
+
+    .text-button:hover svg {
+      transform: translateX(4px);
+      color: var(--hovered-color);
+    }
+
+    .text-button svg {
+      color: var(--primary-color);
+      transition: 0.2s;
+      position: relative;
+      width: 15px;
+      transition-delay: 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <button class="text-button">
+    <p>Register</p>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 5l7 7-7 7"
+      ></path>
+    </svg>
+  </button>
+</body>
+</html>
